@@ -74,30 +74,12 @@ export default function QuantityCalculator() {
       </div>
 
       {/* Package Tabs */}
-      <div
-        style={{
-          display: "flex",
-          gap: "0.5rem",
-          overflowX: "auto",
-          paddingBottom: "0.75rem",
-          marginBottom: "1.25rem",
-          borderBottom: "1px solid var(--color-border)",
-          scrollbarWidth: "none",
-          width: "100%",
-          maxWidth: "100%",
-        }}
-      >
+      <div className="scroll-tabs-container">
         {packages.map((pkg) => (
           <button
             key={pkg.id}
             onClick={() => setSelectedId(pkg.id)}
-            className={`doneness-tab ${selectedId === pkg.id ? "active" : ""}`}
-            style={{
-              fontSize: "0.85rem",
-              padding: "0.5rem 1rem",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-            }}
+            className={`scroll-tab-btn ${selectedId === pkg.id ? "active" : ""}`}
           >
             {pkg.id === "group-1" ? "👤 شخص واحد" :
              pkg.id === "group-2" ? "👥 شخصين" :
@@ -132,7 +114,7 @@ export default function QuantityCalculator() {
             <h5 style={{ fontWeight: 700, fontSize: "0.85rem", color: "var(--color-brand-gold)", marginBottom: "0.75rem" }}>
               📊 المكونات والكميات الموصى بها:
             </h5>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", fontSize: "0.85rem" }}>
+            <div className="calculator-grid">
               <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed var(--color-border)", paddingBottom: "0.35rem" }}>
                 <span style={{ color: "var(--color-text-muted)" }}>🍢 كباب بلدي:</span>
                 <strong style={{ color: "white" }}>{activePkg.kebab || "—"}</strong>

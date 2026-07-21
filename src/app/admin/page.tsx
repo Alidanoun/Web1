@@ -529,37 +529,39 @@ export default function AdminDashboard() {
               <h3 style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--color-brand-gold)", marginBottom: "0.75rem" }}>
                 📊 أداء المنتجات والوصفات
               </h3>
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>المنتج</th>
-                    <th>مرات المسح</th>
-                    <th>تقييم الوصفة</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {["steak", "burger", "kebab", "ribs"].map((p) => {
-                    const label = p === "steak" ? "🥩 ستيك" : p === "burger" ? "🍔 برغر" : p === "kebab" ? "🔥 كباب" : "🍖 ريش";
-                    const scanCount = stats.scans[p] || 0;
-                    const ratingInfo = stats.ratings[p] || { count: 0, avg: 0 };
-                    return (
-                      <tr key={p}>
-                        <td style={{ fontWeight: 700 }}>{label}</td>
-                        <td>{scanCount}</td>
-                        <td>
-                          {ratingInfo.count > 0 ? (
-                            <span style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
-                              ★ {ratingInfo.avg} <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)" }}>({ratingInfo.count} تقييم)</span>
-                            </span>
-                          ) : (
-                            <span style={{ color: "var(--color-text-muted)" }}>لا يوجد تقييم</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="admin-table-container">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>المنتج</th>
+                      <th>مرات المسح</th>
+                      <th>تقييم الوصفة</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {["steak", "burger", "kebab", "ribs"].map((p) => {
+                      const label = p === "steak" ? "🥩 ستيك" : p === "burger" ? "🍔 برغر" : p === "kebab" ? "🔥 كباب" : "🍖 ريش";
+                      const scanCount = stats.scans[p] || 0;
+                      const ratingInfo = stats.ratings[p] || { count: 0, avg: 0 };
+                      return (
+                        <tr key={p}>
+                          <td style={{ fontWeight: 700 }}>{label}</td>
+                          <td>{scanCount}</td>
+                          <td>
+                            {ratingInfo.count > 0 ? (
+                              <span style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
+                                ★ {ratingInfo.avg} <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)" }}>({ratingInfo.count} تقييم)</span>
+                              </span>
+                            ) : (
+                              <span style={{ color: "var(--color-text-muted)" }}>لا يوجد تقييم</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Platform Performance Card */}

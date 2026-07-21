@@ -161,30 +161,12 @@ export default function RecipeQuantityCalculator({
       </div>
 
       {/* Group Selector Tabs */}
-      <div
-        style={{
-          display: "flex",
-          gap: "0.4rem",
-          overflowX: "auto",
-          paddingBottom: "0.75rem",
-          marginBottom: "1.25rem",
-          borderBottom: "1px solid var(--color-border)",
-          scrollbarWidth: "none",
-          width: "100%",
-          maxWidth: "100%",
-        }}
-      >
+      <div className="scroll-tabs-container">
         {packages.map((pkg) => (
           <button
             key={pkg.id}
             onClick={() => setSelectedId(pkg.id)}
-            className={`doneness-tab ${selectedId === pkg.id ? "active" : ""}`}
-            style={{
-              fontSize: "0.78rem",
-              padding: "0.45rem 0.85rem",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-            }}
+            className={`scroll-tab-btn ${selectedId === pkg.id ? "active" : ""}`}
           >
             {GROUP_LABELS[pkg.id] || pkg.name}
           </button>
