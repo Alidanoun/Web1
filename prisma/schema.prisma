@@ -1,0 +1,69 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Scan {
+  id        String   @id @default(uuid())
+  product   String   // 'burger', 'steak', 'kebab', 'ribs', etc.
+  createdAt DateTime @default(now())
+}
+
+model Rating {
+  id        String   @id @default(uuid())
+  product   String   // 'burger', 'steak', 'kebab', 'ribs', etc.
+  stars     Int      // 1 to 5
+  comment   String?  @default("")
+  createdAt DateTime @default(now())
+}
+
+model Lead {
+  id        String   @id @default(uuid())
+  name      String   @default("")
+  contact   String   // phone number
+  promoCode String   // generated code
+  createdAt DateTime @default(now())
+}
+
+model OrderClick {
+  id        String   @id @default(uuid())
+  product   String
+  platform  String   // 'talabat', 'careem', 'website', 'phone'
+  createdAt DateTime @default(now())
+}
+
+model Recipe {
+  id               String   @id // e.g. 'burger', 'steak', 'kebab', 'ribs', 'tenderloin', 'kofta', 'awsal', 'smash'
+  title            String
+  category         String
+  cuisine          String   @default("arabic") // 'arabic' or 'international'
+  description      String
+  prepTime         String
+  cookTime         String
+  difficulty       String
+  videoUrl         String   @default("")
+  videoPlaceholder String   @default("")
+  ingredients      String   // JSON stringified array of ingredients
+  instructions     String   // JSON stringified array of instructions
+  tips             String   // JSON stringified array of tips
+  marinade         String
+  doneness         String?  // JSON stringified array of doneness objects
+  recommendedWeights String? // JSON stringified object mapping group sizes to recommended weights
+  updatedAt        DateTime @updatedAt
+}
+
+model Package {
+  id          String   @id // e.g. "group-1", "group-2", "group-3", "group-4", "group-5"
+  name        String
+  description String   @default("")
+  kebab       String   @default("") // Recommended kebab amount (e.g. "500g")
+  ribs        String   @default("") // Recommended ribs amount (e.g. "300g")
+  burger      String   @default("") // Recommended burger amount (e.g. "2 حبة")
+  steak       String   @default("") // Recommended steak amount (e.g. "1 حبة")
+  notes       String   @default("") // Extra details or suggestions
+  updatedAt   DateTime @updatedAt
+}
