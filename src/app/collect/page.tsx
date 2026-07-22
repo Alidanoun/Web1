@@ -11,7 +11,7 @@ export default function LoyaltyCollectPage() {
   useEffect(() => {
     // 1. Get current loyalty points
     const savedPointsStr = localStorage.getItem("markzia_loyalty_points");
-    let currentPoints = savedPointsStr ? parseInt(savedPointsStr, 10) : 0;
+    const currentPoints = savedPointsStr ? parseInt(savedPointsStr, 10) : 0;
 
     // 2. Check last scan time (2-minute cooldown to prevent cheating/spamming)
     const lastScanStr = localStorage.getItem("markzia_last_scan_time");

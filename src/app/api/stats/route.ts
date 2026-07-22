@@ -11,7 +11,7 @@ export async function GET() {
       },
     });
 
-    const scans = scansGroup.reduce((acc: Record<string, number>, curr: any) => {
+    const scans = scansGroup.reduce((acc: Record<string, number>, curr: (typeof scansGroup)[number]) => {
       acc[curr.product] = curr._count._all;
       return acc;
     }, {} as Record<string, number>);
@@ -27,7 +27,7 @@ export async function GET() {
       },
     });
 
-    const ratings = ratingsGroup.reduce((acc: Record<string, { count: number; avg: number }>, curr: any) => {
+    const ratings = ratingsGroup.reduce((acc: Record<string, { count: number; avg: number }>, curr: (typeof ratingsGroup)[number]) => {
       acc[curr.product] = {
         count: curr._count.stars,
         avg: curr._avg.stars ? Number(curr._avg.stars.toFixed(1)) : 0,
@@ -50,7 +50,7 @@ export async function GET() {
       },
     });
 
-    const clicks = clicksGroup.reduce((acc: Record<string, number>, curr: any) => {
+    const clicks = clicksGroup.reduce((acc: Record<string, number>, curr: (typeof clicksGroup)[number]) => {
       acc[curr.platform] = curr._count._all;
       return acc;
     }, {} as Record<string, number>);

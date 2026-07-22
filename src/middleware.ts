@@ -3,13 +3,17 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  const method = request.method;
 
   // Protected paths for admin dashboard & data management APIs
   const isProtectedPath =
     path.startsWith("/admin") ||
     path.startsWith("/api/export-leads") ||
     path.startsWith("/api/reset") ||
-    path.startsWith("/api/seed");
+    path.startsWith("/api/seed") ||
+    path.startsWith("/api/stats") ||
+    (path.startsWith("/api/recipes") && method !== "GET") ||
+    (path.startsWith("/api/packages") && method !== "GET");
 
   if (!isProtectedPath) {
     return NextResponse.next();
@@ -41,5 +45,13 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/export-leads", "/api/reset", "/api/seed"],
+  matcher: [
+    "/admin/:path*",
+    "/api/export-leads",
+    "/api/reset",
+    "/api/seed",
+    "/api/stats",
+    "/api/recipes",
+    "/api/packages",
+  ],
 };

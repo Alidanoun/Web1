@@ -9,7 +9,13 @@ import LeadForm from "@/components/LeadForm";
 import OrderModal from "@/components/OrderModal";
 import LoyaltyTracker from "@/components/LoyaltyTracker";
 import VideoPlayer from "@/components/VideoPlayer";
+import type { Viewport } from "next";
 import RecipeQuantityCalculator from "@/components/RecipeQuantityCalculator";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
 
 interface PageProps {
   params: Promise<{ product: string }>;

@@ -494,20 +494,9 @@ export default function AdminDashboard() {
 
             {/* Clear/Reset Data for Real Launch */}
             <button
-              onClick={async () => {
-                if (confirm("هل أنت تأكد من رغبتك في تصفير وقرص البيانات القديمة والبدء الحقيقي الآن؟")) {
-                  setSeedLoading(true);
-                  try {
-                    const res = await fetch("/api/reset", { method: "POST" });
-                    if (res.ok) {
-                      alert("تم تصفير البيانات بنجاح! أصبح النظام جاهزاً للعملاء الحقيقيين 100%.");
-                      fetchStats();
-                    }
-                  } catch (e) {
-                    console.error(e);
-                  } finally {
-                    setSeedLoading(false);
-                  }
+              onClick={() => {
+                if (confirm("⚠️ هل أنت تأكد من رغبتك في تصفير وإعادة ضبط كافة بيانات المسح والتقييمات والعملاء للبدء الحقيقي؟")) {
+                  handleSeed();
                 }
               }}
               disabled={seedLoading}
