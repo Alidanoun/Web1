@@ -2,13 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { recipes as defaultRecipes } from "@/data/recipes";
 
-// Helper to seed initial recipes if DB is empty or outdated
+// Helper to seed initial default recipes safely without deleting admin edits
 async function seedDefaultRecipesIfEmpty() {
-  const count = await prisma.recipe.count();
-  if (count < Object.keys(defaultRecipes).length) {
-    await prisma.recipe.deleteMany();
-    for (const key of Object.keys(defaultRecipes)) {
-      const r = defaultRecipes[key];
+  for (const key of Object.keys(defaultRecipes)) {
+    const r = defaultRecipes[key];
+    const existing = await prisma.recipe.findUnique({ where: { id: r.id } });
+    if (!existing) {
       await prisma.recipe.create({
         data: {
           id: r.id,
@@ -39,7 +38,7 @@ export async function GET() {
 
     const dbRecipes = await prisma.recipe.findMany();
 
-    const formatted = dbRecipes.reduce((acc, r) => {
+    const formatted = dbRecipes.reduce((acc: Record<string, any>, r: any) => {
       acc[r.id] = {
         id: r.id,
         title: r.title,

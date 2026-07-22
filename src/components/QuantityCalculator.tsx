@@ -39,7 +39,7 @@ export default function QuantityCalculator() {
 
   // Generates custom WhatsApp message URL
   const getWhatsAppLink = (pkg: Package) => {
-    const phoneNumber = "962799999999"; // Replace with Al-Markazia actual WhatsApp number if available
+    const phoneNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "962790000000";
     const baseText = `مرحباً ملاحم ومطاعم المركزية، أود طلب باقة اللحوم الموصى بها:\n\n*الباقة:* ${pkg.name}\n`;
     let detailsText = "";
     if (pkg.kebab && pkg.kebab !== "—") detailsText += `- كباب بلدي: ${pkg.kebab}\n`;

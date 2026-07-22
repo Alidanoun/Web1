@@ -55,7 +55,7 @@ export default function OrderModal({ product }: OrderModalProps) {
       name: "رقم خدمة العملاء المباشر",
       icon: "📞",
       description: "اتصل بنا هاتفياً لترتيب طلبك وتلبية طلباتك الخاصة",
-      url: "tel:+962790000000",
+      url: process.env.NEXT_PUBLIC_CONTACT_PHONE ? `tel:${process.env.NEXT_PUBLIC_CONTACT_PHONE}` : "tel:+962790000000",
       key: "phone",
     },
   ];

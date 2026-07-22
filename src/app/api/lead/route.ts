@@ -25,6 +25,11 @@ export async function POST(req: Request) {
 
     const customerName = name.trim();
     const phoneContact = contact.trim();
+    const cleanPhone = phoneContact.replace(/[^0-9+]/g, "");
+
+    if (cleanPhone.length < 8) {
+      return NextResponse.json({ error: "الرجاء إدخال رقم هاتف صحسح يحتوي على 8 أرقام على الأقل" }, { status: 400 });
+    }
 
     // Check if lead already exists by contact number to return existing code
     const existingLead = await prisma.lead.findFirst({

@@ -10,7 +10,7 @@ export async function GET() {
 
     let rowsHtml = "";
 
-    leads.forEach((l) => {
+    leads.forEach((l: any) => {
       const name = (l.name || "عميل المركزية").trim();
       const contact = l.contact.trim();
       const code = l.promoCode.trim();

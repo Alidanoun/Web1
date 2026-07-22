@@ -108,7 +108,7 @@ export default function RecipeQuantityCalculator({
 
   // WhatsApp order message including recipe name and all ingredients
   const getWhatsAppLink = () => {
-    const phoneNumber = "962799999999";
+    const phoneNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "962790000000";
     const groupName = GROUP_LABELS[selectedId] || selectedId;
     const activeIngs = getActiveIngredients();
 
