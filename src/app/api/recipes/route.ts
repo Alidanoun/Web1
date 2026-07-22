@@ -34,42 +34,40 @@ async function seedDefaultRecipesIfEmpty() {
 // GET /api/recipes - Fetch all recipes
 export async function GET() {
   try {
-    await seedDefaultRecipesIfEmpty();
+    try {
+      await seedDefaultRecipesIfEmpty();
+      const dbRecipes = await prisma.recipe.findMany();
+      if (dbRecipes && dbRecipes.length > 0) {
+        const formatted = dbRecipes.reduce((acc: Record<string, any>, r: any) => {
+          acc[r.id] = {
+            id: r.id,
+            title: r.title,
+            category: r.category,
+            cuisine: r.cuisine || "arabic",
+            description: r.description,
+            prepTime: r.prepTime,
+            cookTime: r.cookTime,
+            difficulty: r.difficulty,
+            videoPlaceholder: r.videoPlaceholder,
+            videoUrl: r.videoUrl,
+            ingredients: JSON.parse(r.ingredients || "[]"),
+            instructions: JSON.parse(r.instructions || "[]"),
+            tips: JSON.parse(r.tips || "[]"),
+            marinade: r.marinade,
+            doneness: r.doneness ? JSON.parse(r.doneness) : undefined,
+          };
+          return acc;
+        }, {} as Record<string, any>);
+        return NextResponse.json({ success: true, recipes: formatted }, { status: 200 });
+      }
+    } catch (dbErr) {
+      console.warn("DB fetch failed, using defaultRecipes fallback:", dbErr);
+    }
 
-    const dbRecipes = await prisma.recipe.findMany();
-
-    const formatted = dbRecipes.reduce((acc: Record<string, any>, r: any) => {
-      acc[r.id] = {
-        id: r.id,
-        title: r.title,
-        category: r.category,
-        cuisine: r.cuisine || "arabic",
-        description: r.description,
-        prepTime: r.prepTime,
-        cookTime: r.cookTime,
-        difficulty: r.difficulty,
-        videoPlaceholder: r.videoPlaceholder,
-        videoUrl: r.videoUrl,
-        ingredients: JSON.parse(r.ingredients || "[]"),
-        instructions: JSON.parse(r.instructions || "[]"),
-        tips: JSON.parse(r.tips || "[]"),
-        marinade: r.marinade,
-        doneness: r.doneness ? JSON.parse(r.doneness) : undefined,
-        recommendedWeights: r.recommendedWeights ? JSON.parse(r.recommendedWeights) : {
-          "group-1": "",
-          "group-2": "",
-          "group-3": "",
-          "group-4": "",
-          "group-5": ""
-        },
-      };
-      return acc;
-    }, {} as Record<string, any>);
-
-    return NextResponse.json({ success: true, recipes: formatted }, { status: 200 });
+    return NextResponse.json({ success: true, recipes: defaultRecipes }, { status: 200 });
   } catch (error) {
     console.error("Error fetching recipes:", error);
-    return NextResponse.json({ error: "فشل جلب الوصفات" }, { status: 500 });
+    return NextResponse.json({ success: true, recipes: defaultRecipes }, { status: 200 });
   }
 }
 
