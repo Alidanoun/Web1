@@ -10,7 +10,6 @@ import OrderModal from "@/components/OrderModal";
 import LoyaltyTracker from "@/components/LoyaltyTracker";
 import VideoPlayer from "@/components/VideoPlayer";
 import type { Viewport } from "next";
-import RecipeQuantityCalculator from "@/components/RecipeQuantityCalculator";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -237,13 +236,7 @@ export default async function ProductRecipePage({ params, searchParams }: PagePr
               </p>
             </div>
 
-            {/* Quantity Calculator (حاسبة الكميات للوصفة) */}
-            <RecipeQuantityCalculator
-              productId={recipe.id}
-              recipeTitle={recipe.title}
-              ingredients={recipe.ingredients}
-              recommendedWeights={recipe.recommendedWeights}
-            />
+
 
             {/* Ingredients Section (المقادير) */}
             <div className="card">

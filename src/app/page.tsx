@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import LeadForm from "@/components/LeadForm";
-import QuantityCalculator from "@/components/QuantityCalculator";
 
 interface CategoryRecipe {
   id: string;

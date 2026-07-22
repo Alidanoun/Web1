@@ -59,18 +59,13 @@ interface PackageData {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"stats" | "recipes" | "qr" | "packages">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "recipes" | "qr">("stats");
   const [domainHost, setDomainHost] = useState("http://recipes-markzia.ddns.net");
   const [stats, setStats] = useState<StatsData | null>(null);
   const [recipes, setRecipes] = useState<Record<string, RecipeData>>({});
-  const [packages, setPackages] = useState<PackageData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [seedLoading, setSeedLoading] = useState(false);
-
-  // Package editing state
-  const [editingPackage, setEditingPackage] = useState<PackageData | null>(null);
-  const [savingPackage, setSavingPackage] = useState(false);
 
   // Recipe editing state
   const [editingRecipe, setEditingRecipe] = useState<RecipeData | null>(null);
@@ -133,25 +128,11 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchPackages = async () => {
-    try {
-      const res = await fetch("/api/packages");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.packages) {
-          setPackages(data.packages);
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching packages:", err);
-    }
-  };
-
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.origin) {
       setDomainHost(window.location.origin);
     }
-    Promise.all([fetchStats(), fetchRecipes(), fetchPackages()]).then(() => setLoading(false));
+    Promise.all([fetchStats(), fetchRecipes()]).then(() => setLoading(false));
   }, []);
 
   const handleSeed = async () => {
@@ -318,67 +299,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Package form fields
-  const [formPkgName, setFormPkgName] = useState("");
-  const [formPkgDesc, setFormPkgDesc] = useState("");
-  const [formPkgKebab, setFormPkgKebab] = useState("");
-  const [formPkgRibs, setFormPkgRibs] = useState("");
-  const [formPkgBurger, setFormPkgBurger] = useState("");
-  const [formPkgSteak, setFormPkgSteak] = useState("");
-  const [formPkgNotes, setFormPkgNotes] = useState("");
 
-  const openPackageEditor = (pkg: PackageData) => {
-    setEditingPackage(pkg);
-    setFormPkgName(pkg.name);
-    setFormPkgDesc(pkg.description);
-    setFormPkgKebab(pkg.kebab);
-    setFormPkgRibs(pkg.ribs);
-    setFormPkgBurger(pkg.burger);
-    setFormPkgSteak(pkg.steak);
-    setFormPkgNotes(pkg.notes);
-    setSaveSuccess(false);
-  };
-
-  const handleSavePackage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingPackage) return;
-
-    setSavingPackage(true);
-    setSaveSuccess(false);
-
-    try {
-      const res = await fetch("/api/packages", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editingPackage.id,
-          name: formPkgName,
-          description: formPkgDesc,
-          kebab: formPkgKebab,
-          ribs: formPkgRibs,
-          burger: formPkgBurger,
-          steak: formPkgSteak,
-          notes: formPkgNotes,
-        }),
-      });
-
-      if (res.ok) {
-        setSaveSuccess(true);
-        fetchPackages();
-        setTimeout(() => {
-          setEditingPackage(null);
-          setSaveSuccess(false);
-        }, 1200);
-      } else {
-        alert("فشل حفظ الباقة.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("حدث خطأ أثناء الحفظ.");
-    } finally {
-      setSavingPackage(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -422,13 +343,6 @@ export default function AdminDashboard() {
           style={{ fontSize: "0.95rem", padding: "0.6rem 1.25rem" }}
         >
           🖨️ استخراج وطباعة رموز الـ QR
-        </button>
-        <button
-          className={`doneness-tab ${activeTab === "packages" ? "active" : ""}`}
-          onClick={() => setActiveTab("packages")}
-          style={{ fontSize: "0.95rem", padding: "0.6rem 1.25rem" }}
-        >
-          📦 باقات وحاسبة أوزان اللحوم
         </button>
       </div>
 
@@ -906,45 +820,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* TAB 4: MEAT PACKAGES & CALCULATOR MANAGEMENT */}
-      {activeTab === "packages" && (
-        <div className="animate-fade-in">
-          <h3 style={{ fontWeight: 800, fontSize: "1.1rem", color: "white", marginBottom: "0.5rem" }}>
-            📦 إدارة باقات وحاسبة أوزان اللحوم
-          </h3>
-          <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)", marginBottom: "1.25rem" }}>
-            عدّل الكميات والأوزان والنصائح المقترحة لكل فئة من فئات جمعات الشواء والعزائم.
-          </p>
 
-          <div className="grid-categories">
-            {packages.map((pkg) => (
-              <div key={pkg.id} className="card card-gold-border" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                <div>
-                  <h4 style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--color-brand-gold)", marginBottom: "0.5rem" }}>
-                    👑 {pkg.name}
-                  </h4>
-                  <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", marginBottom: "0.75rem" }}>
-                    {pkg.description}
-                  </p>
-                  <ul style={{ fontSize: "0.8rem", color: "white", listStyle: "none", padding: 0, marginBottom: "1rem" }}>
-                    <li>🍢 كباب: <strong>{pkg.kebab || "—"}</strong></li>
-                    <li>🍖 ريش: <strong>{pkg.ribs || "—"}</strong></li>
-                    <li>🍔 برغر: <strong>{pkg.burger || "—"}</strong></li>
-                    <li>🥩 ستيك: <strong>{pkg.steak || "—"}</strong></li>
-                  </ul>
-                </div>
-                <button
-                  className="btn-gold"
-                  onClick={() => openPackageEditor(pkg)}
-                  style={{ fontSize: "0.85rem", padding: "0.6rem" }}
-                >
-                  ✏️ تعديل أوزان الباقة
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* EDIT RECIPE MODAL */}
       {editingRecipe && (
@@ -1228,121 +1104,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* EDIT PACKAGE MODAL */}
-      {editingPackage && (
-        <div className="modal-overlay" onClick={() => setEditingPackage(null)}>
-          <div
-            className="modal-content animate-slide-up"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: "600px", maxHeight: "90vh", overflowY: "auto" }}
-          >
-            <button className="modal-close" onClick={() => setEditingPackage(null)}>
-              &times;
-            </button>
 
-            <h3 style={{ fontWeight: 800, color: "var(--color-brand-gold)", fontSize: "1.2rem", marginBottom: "0.35rem" }}>
-              ✏️ تعديل أوزان باقة ({editingPackage.name})
-            </h3>
-            <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", marginBottom: "1.25rem" }}>
-              عدل الكميات الموصى بها والنصائح ثم اضغط حفظ.
-            </p>
-
-            {saveSuccess && (
-              <div
-                style={{
-                  background: "rgba(16, 185, 129, 0.15)",
-                  border: "1px solid var(--color-success)",
-                  color: "var(--color-success)",
-                  padding: "0.75rem",
-                  borderRadius: "8px",
-                  fontSize: "0.85rem",
-                  fontWeight: 700,
-                  textAlign: "center",
-                  marginBottom: "1rem",
-                }}
-              >
-                ✓ تم حفظ أوزان الباقة بنجاح!
-              </div>
-            )}
-
-            <form onSubmit={handleSavePackage}>
-              <div className="form-group">
-                <label className="form-label">اسم الباقة:</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formPkgName}
-                  onChange={(e) => setFormPkgName(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">الوصف التفصيلي للباقة:</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formPkgDesc}
-                  onChange={(e) => setFormPkgDesc(e.target.value)}
-                />
-              </div>
-
-              <div className="responsive-two-column-grid">
-                <div className="form-group">
-                  <label className="form-label">🍢 وزن/كمية الكباب البلدي:</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formPkgKebab}
-                    onChange={(e) => setFormPkgKebab(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">🍖 وزن/كمية الريش البلدي:</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formPkgRibs}
-                    onChange={(e) => setFormPkgRibs(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">🍔 وزن/عدد البرغر البلدي:</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formPkgBurger}
-                    onChange={(e) => setFormPkgBurger(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">🥩 وزن/قطعة ستيك الريب آي:</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formPkgSteak}
-                    onChange={(e) => setFormPkgSteak(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">💡 ملاحظة ونصيحة الطاهي للباقة:</label>
-                <textarea
-                  className="form-input"
-                  rows={3}
-                  value={formPkgNotes}
-                  onChange={(e) => setFormPkgNotes(e.target.value)}
-                  style={{ resize: "vertical" }}
-                />
-              </div>
-
-              <button type="submit" className="btn-gold" disabled={savingPackage} style={{ marginTop: "0.5rem" }}>
-                {savingPackage ? "جاري الحفظ..." : "💾 حفظ أوزان الباقة"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
 
     </div>
   );
