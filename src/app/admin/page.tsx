@@ -80,21 +80,7 @@ export default function AdminDashboard() {
   const [formVideoUrl, setFormVideoUrl] = useState("");
   const [formId, setFormId] = useState("");
   const [formCuisine, setFormCuisine] = useState("arabic");
-  const [formWeights, setFormWeights] = useState<Record<string, string>>({
-    "group-1": "",
-    "group-2": "",
-    "group-3": "",
-    "group-4": "",
-    "group-5": "",
-  });
-  const [formIngredientsMap, setFormIngredientsMap] = useState<Record<string, string>>({
-    "group-1": "",
-    "group-2": "",
-    "group-3": "",
-    "group-4": "",
-    "group-5": "",
-  });
-  const [activeIngGroup, setActiveIngGroup] = useState("group-3");
+  const [formIngredients, setFormIngredients] = useState("");
   const [formInstructions, setFormInstructions] = useState("");
   const [formTips, setFormTips] = useState("");
   const [formMarinade, setFormMarinade] = useState("");
@@ -163,51 +149,18 @@ export default function AdminDashboard() {
     setFormVideoUrl(recipe.videoUrl || "");
     setFormCuisine(recipe.cuisine || "arabic");
 
-    const defaultMap = {
-      "group-1": "",
-      "group-2": "",
-      "group-3": "",
-      "group-4": "",
-      "group-5": "",
-    };
-
-    if (recipe.ingredients) {
-      if (Array.isArray(recipe.ingredients)) {
-        const listText = recipe.ingredients.join("\n");
-        defaultMap["group-1"] = listText;
-        defaultMap["group-2"] = listText;
-        defaultMap["group-3"] = listText;
-        defaultMap["group-4"] = listText;
-        defaultMap["group-5"] = listText;
-      } else if (typeof recipe.ingredients === "object") {
-        Object.keys(defaultMap).forEach((key) => {
-          const val = recipe.ingredients[key];
-          if (Array.isArray(val)) {
-            defaultMap[key as keyof typeof defaultMap] = val.join("\n");
-          }
-        });
-      }
+    if (Array.isArray(recipe.ingredients)) {
+      setFormIngredients(recipe.ingredients.join("\n"));
+    } else if (typeof recipe.ingredients === "object" && recipe.ingredients !== null) {
+      const list = (recipe.ingredients as any)["group-3"] || Object.values(recipe.ingredients)[0] || [];
+      setFormIngredients(Array.isArray(list) ? list.join("\n") : "");
+    } else {
+      setFormIngredients("");
     }
-    setFormIngredientsMap(defaultMap);
-    setActiveIngGroup("group-3");
 
-    const defaultWeights = {
-      "group-1": "",
-      "group-2": "",
-      "group-3": "",
-      "group-4": "",
-      "group-5": "",
-    };
-    if (recipe.recommendedWeights) {
-      Object.keys(defaultWeights).forEach((key) => {
-        defaultWeights[key as keyof typeof defaultWeights] = recipe.recommendedWeights[key] || "";
-      });
-    }
-    setFormWeights(defaultWeights);
-
-    setFormInstructions(recipe.instructions.join("\n"));
-    setFormTips(recipe.tips.join("\n"));
-    setFormMarinade(recipe.marinade);
+    setFormInstructions(Array.isArray(recipe.instructions) ? recipe.instructions.join("\n") : "");
+    setFormTips(Array.isArray(recipe.tips) ? recipe.tips.join("\n") : "");
+    setFormMarinade(recipe.marinade || "");
     setSaveSuccess(false);
   };
 
@@ -222,24 +175,11 @@ export default function AdminDashboard() {
       difficulty: "سهل",
       videoPlaceholder: "شاهد طريقة التحضير",
       videoUrl: "",
-      ingredients: {
-        "group-1": [],
-        "group-2": [],
-        "group-3": [],
-        "group-4": [],
-        "group-5": [],
-      },
+      ingredients: [],
       instructions: [],
       tips: [],
       marinade: "",
       cuisine: "arabic",
-      recommendedWeights: {
-        "group-1": "",
-        "group-2": "",
-        "group-3": "",
-        "group-4": "",
-        "group-5": "",
-      },
     };
     openRecipeEditor(blankRecipe);
   };
@@ -252,13 +192,10 @@ export default function AdminDashboard() {
     setSaveSuccess(false);
 
     try {
-      const parsedIngredientsMap: Record<string, string[]> = {};
-      Object.keys(formIngredientsMap).forEach((key) => {
-        parsedIngredientsMap[key] = formIngredientsMap[key]
-          .split("\n")
-          .map((s) => s.trim())
-          .filter(Boolean);
-      });
+      const parsedIngredients = formIngredients
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
 
       const updatedData = {
         id: formId ? formId.trim().toLowerCase() : (editingRecipe.id || "recipe-" + Date.now()),
@@ -268,12 +205,11 @@ export default function AdminDashboard() {
         cookTime: formCook,
         difficulty: editingRecipe.difficulty || "متوسط",
         videoUrl: formVideoUrl,
-        ingredients: parsedIngredientsMap,
+        ingredients: parsedIngredients,
         instructions: formInstructions.split("\n").map((s) => s.trim()).filter(Boolean),
         tips: formTips.split("\n").map((s) => s.trim()).filter(Boolean),
         marinade: formMarinade,
         cuisine: formCuisine,
-        recommendedWeights: formWeights,
       };
 
       const res = await fetch("/api/recipes", {
@@ -968,107 +904,18 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              {/* Recommended Meat Weights (الكميات المقترحة من اللحم الرئيسي) */}
-              <div className="form-group" style={{ border: "1px solid rgba(223, 138, 39, 0.2)", padding: "1rem", borderRadius: "8px", background: "rgba(223, 138, 39, 0.02)" }}>
-                <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700, marginBottom: "0.75rem", display: "block" }}>
-                  ⚖️ أوزان وكميات اللحوم الموصى بها (حسب الفئة):
-                </label>
-                <div className="responsive-two-column-grid">
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: "0.75rem" }}>👤 لشخص واحد:</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="مثال: 300 غرام"
-                      value={formWeights["group-1"] || ""}
-                      onChange={(e) => setFormWeights({ ...formWeights, "group-1": e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: "0.75rem" }}>👥 لشخصين:</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="مثال: 500 غرام"
-                      value={formWeights["group-2"] || ""}
-                      onChange={(e) => setFormWeights({ ...formWeights, "group-2": e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: "0.75rem" }}>👨‍👩‍👦 لـ 3-5 أشخاص:</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="مثال: 1.0 كيلو غرام"
-                      value={formWeights["group-3"] || ""}
-                      onChange={(e) => setFormWeights({ ...formWeights, "group-3": e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: "0.75rem" }}>👨‍👩‍👧‍👦 لـ 5-7 أشخاص:</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="مثال: 1.5 كيلو غرام"
-                      value={formWeights["group-4"] || ""}
-                      onChange={(e) => setFormWeights({ ...formWeights, "group-4": e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="form-group" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontSize: "0.75rem" }}>👑 لوليمة (8+ أشخاص):</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="مثال: 2.5 كيلو غرام"
-                    value={formWeights["group-5"] || ""}
-                    onChange={(e) => setFormWeights({ ...formWeights, "group-5": e.target.value })}
-                  />
-                </div>
-              </div>
-
-              {/* Ingredients (المكونات والمقادير حسب عدد الأشخاص) */}
+              {/* Ingredients (المكونات والمقادير) */}
               <div className="form-group">
                 <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
-                  📋 المكونات والمقادير (حسب عدد الأشخاص):
+                  📋 المكونات والمقادير الكاملة (مكون واحد في كل سطر):
                 </label>
-                <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
-                  * اختر المجموعة لتعديل مقاديرها (مكون واحد في كل سطر):
-                </p>
-
-                {/* Sub-tabs for group-specific ingredients */}
-                <div className="scroll-tabs-container" style={{ marginBottom: "0.5rem", paddingBottom: "0.25rem" }}>
-                  {[
-                    { id: "group-1", name: "👤 شخص" },
-                    { id: "group-2", name: "👥 شخصين" },
-                    { id: "group-3", name: "👨‍👩‍👦 3-5" },
-                    { id: "group-4", name: "👨‍👩‍👧‍👦 5-7" },
-                    { id: "group-5", name: "👑 وليمة (8+)" },
-                  ].map((gp) => (
-                    <button
-                      key={gp.id}
-                      type="button"
-                      onClick={() => setActiveIngGroup(gp.id)}
-                      className={`scroll-tab-btn ${activeIngGroup === gp.id ? "active" : ""}`}
-                      style={{ padding: "0.35rem 0.6rem" }}
-                    >
-                      {gp.name}
-                    </button>
-                  ))}
-                </div>
-
                 <textarea
                   className="form-input"
-                  rows={5}
-                  value={formIngredientsMap[activeIngGroup] || ""}
-                  onChange={(e) => {
-                    setFormIngredientsMap({
-                      ...formIngredientsMap,
-                      [activeIngGroup]: e.target.value,
-                    });
-                  }}
+                  rows={6}
+                  value={formIngredients}
+                  onChange={(e) => setFormIngredients(e.target.value)}
                   style={{ resize: "vertical", borderColor: "rgba(223, 138, 39, 0.4)" }}
-                  placeholder="اكتب المكونات هنا... مثلاً:&#10;1.0 كيلو غرام لحم مفروم&#10;3 حبات بصل مفروم&#10;ملعقة ملح صغيرة"
+                  placeholder="اكتب المكونات هنا... مثلاً:&#10;1 قطعة ستيك ريب آي من المركزية 3-4 سم&#10;ملح بحري خشن وفلفل أسود طازج&#10;3 ملاعق كبار زبدة غير مملحة عالية الجودة&#10;3 فصوص ثوم مهروسة بلطف"
                 />
               </div>
 
