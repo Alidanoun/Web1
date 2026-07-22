@@ -148,6 +148,9 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
+    if (typeof window !== "undefined" && window.location.origin) {
+      setDomainHost(window.location.origin);
+    }
     Promise.all([fetchStats(), fetchRecipes(), fetchPackages()]).then(() => setLoading(false));
   }, []);
 
@@ -398,16 +401,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Navigation Tabs */}
-      <div
-        style={{
-          display: "flex",
-          gap: "0.75rem",
-          marginBottom: "1.5rem",
-          borderBottom: "1px solid var(--color-border)",
-          paddingBottom: "0.75rem",
-          overflowX: "auto",
-        }}
-      >
+      <div className="scroll-tabs-container">
         <button
           className={`doneness-tab ${activeTab === "stats" ? "active" : ""}`}
           onClick={() => setActiveTab("stats")}
@@ -569,7 +563,7 @@ export default function AdminDashboard() {
               <h3 style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--color-brand-gold)", marginBottom: "0.75rem" }}>
                 🛵 مصادر طلبات التوصيل (نقرات)
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem", textAlign: "center", padding: "0.5rem 0" }}>
+              <div className="platforms-grid">
                 <div>
                   <span style={{ fontSize: "1.2rem", display: "block" }}>🛵</span>
                   <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>طلبات</span>
@@ -604,7 +598,7 @@ export default function AdminDashboard() {
                 لا يوجد عملاء مسجلين بعد.
               </p>
             ) : (
-              <div style={{ overflowX: "auto" }}>
+              <div className="admin-table-container">
                 <table className="admin-table">
                   <thead>
                     <tr>
@@ -655,7 +649,7 @@ export default function AdminDashboard() {
                 لا توجد تقييمات أو ملاحظات مسجلة بعد.
               </p>
             ) : (
-              <div style={{ overflowX: "auto" }}>
+              <div className="admin-table-container">
                 <table className="admin-table">
                   <thead>
                     <tr>
@@ -881,11 +875,11 @@ export default function AdminDashboard() {
                               <title>ملصق QR - ${prod.title}</title>
                               <style>
                                 body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #fff; }
-                                .sticker { border: 3px double #df8a27; border-radius: 20px; padding: 25px; max-width: 350px; margin: 0 auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                                .sticker { border: 3px double #df8a27; border-radius: 20px; padding: 25px; max-width: min(350px, 100%); margin: 0 auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
                                 .logo { width: 90px; height: 90px; border-radius: 50%; }
                                 h2 { color: #000; margin: 10px 0 5px 0; font-size: 20px; }
                                 p { color: #555; font-size: 13px; margin-bottom: 15px; }
-                                img.qr { width: 220px; height: 220px; }
+                                img.qr { max-width: 100%; width: min(220px, 100%); height: auto; }
                                 .footer-text { background: #141414; color: #df8a27; padding: 8px; border-radius: 8px; font-weight: bold; font-size: 13px; margin-top: 15px; }
                               </style>
                             </head>
@@ -1029,7 +1023,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Prep & Cook Times */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              <div className="responsive-two-column-grid">
                 <div className="form-group">
                   <label className="form-label">وقت التحضير:</label>
                   <input
@@ -1067,7 +1061,7 @@ export default function AdminDashboard() {
                 <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700, marginBottom: "0.75rem", display: "block" }}>
                   ⚖️ أوزان وكميات اللحوم الموصى بها (حسب الفئة):
                 </label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                <div className="responsive-two-column-grid">
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label" style={{ fontSize: "0.75rem" }}>👤 لشخص واحد:</label>
                     <input
@@ -1131,7 +1125,7 @@ export default function AdminDashboard() {
                 </p>
 
                 {/* Sub-tabs for group-specific ingredients */}
-                <div style={{ display: "flex", gap: "0.35rem", marginBottom: "0.5rem", overflowX: "auto", paddingBottom: "0.25rem" }}>
+                <div className="scroll-tabs-container" style={{ marginBottom: "0.5rem", paddingBottom: "0.25rem" }}>
                   {[
                     { id: "group-1", name: "👤 شخص" },
                     { id: "group-2", name: "👥 شخصين" },
@@ -1143,8 +1137,8 @@ export default function AdminDashboard() {
                       key={gp.id}
                       type="button"
                       onClick={() => setActiveIngGroup(gp.id)}
-                      className={`doneness-tab ${activeIngGroup === gp.id ? "active" : ""}`}
-                      style={{ fontSize: "0.75rem", padding: "0.35rem 0.6rem" }}
+                      className={`scroll-tab-btn ${activeIngGroup === gp.id ? "active" : ""}`}
+                      style={{ padding: "0.35rem 0.6rem" }}
                     >
                       {gp.name}
                     </button>

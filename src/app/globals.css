@@ -713,3 +713,32 @@ body {
   font-weight: 700;
 }
 
+/* Delivery Platforms grid (4 columns desktop, 2x2 grid on mobile) */
+.platforms-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+@media (max-width: 600px) {
+  .platforms-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+}
+
+/* Responsive Form Input grid (2 columns desktop, 1 column mobile) */
+.responsive-two-column-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 500px) {
+  .responsive-two-column-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

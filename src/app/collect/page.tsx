@@ -84,7 +84,7 @@ export default function LoyaltyCollectPage() {
         
         {status === "success" && (
           <div className="animate-slide-up">
-            <span style={{ fontSize: "3rem", display: "block", marginBottom: "0.5rem" }}>🎉</span>
+            <span style={{ fontSize: "clamp(2rem, 8vw, 3rem)", display: "block", marginBottom: "0.5rem" }}>🎉</span>
             <h3 style={{ color: "var(--color-success)", fontWeight: 800, fontSize: "1.25rem", marginBottom: "0.5rem" }}>
               تم تسجيل النقطة بنجاح!
             </h3>
@@ -96,7 +96,7 @@ export default function LoyaltyCollectPage() {
 
         {status === "cooldown" && (
           <div className="animate-slide-up">
-            <span style={{ fontSize: "3rem", display: "block", marginBottom: "0.5rem" }}>⏳</span>
+            <span style={{ fontSize: "clamp(2rem, 8vw, 3rem)", display: "block", marginBottom: "0.5rem" }}>⏳</span>
             <h3 style={{ color: "var(--color-brand-gold)", fontWeight: 800, fontSize: "1.2rem", marginBottom: "0.5rem" }}>
               نقطتك مسجلة مسبقاً!
             </h3>
@@ -113,7 +113,7 @@ export default function LoyaltyCollectPage() {
 
         {status === "max" && (
           <div className="animate-slide-up">
-            <span style={{ fontSize: "3rem", display: "block", marginBottom: "0.5rem" }}>🏆</span>
+            <span style={{ fontSize: "clamp(2rem, 8vw, 3rem)", display: "block", marginBottom: "0.5rem" }}>🏆</span>
             <h3 style={{ color: "var(--color-success)", fontWeight: 800, fontSize: "1.25rem", marginBottom: "0.5rem" }}>
               المكافأة جاهزة للاستخدام!
             </h3>
