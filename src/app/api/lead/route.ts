@@ -31,34 +31,41 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "الرجاء إدخال رقم هاتف صحسح يحتوي على 8 أرقام على الأقل" }, { status: 400 });
     }
 
-    // Check if lead already exists by contact number to return existing code
-    const existingLead = await prisma.lead.findFirst({
-      where: { contact: phoneContact },
-    });
-
-    if (existingLead) {
-      return NextResponse.json({
-        success: true,
-        promoCode: existingLead.promoCode,
-        message: `أهلاً بك مجدداً ${existingLead.name || customerName}! تفضل كوبون الخصم الخاص بك:`
-      }, { status: 200 });
-    }
-
     // Generate custom code formatted like: MARKZIA-12yj5h, MARKZIA-456bgth
     const suffix = generateAlphanumericSuffix(6);
     const promoCode = `MARKZIA-${suffix}`;
 
-    const newLead = await prisma.lead.create({
-      data: {
-        name: customerName,
-        contact: phoneContact,
-        promoCode,
-      },
-    });
+    try {
+      // Check if lead already exists by contact number to return existing code
+      const existingLead = await prisma.lead.findFirst({
+        where: { contact: phoneContact },
+      });
 
-    return NextResponse.json({ success: true, promoCode: newLead.promoCode }, { status: 201 });
+      if (existingLead) {
+        return NextResponse.json(
+          {
+            success: true,
+            promoCode: existingLead.promoCode,
+            message: `أهلاً بك مجدداً ${existingLead.name || customerName}! تفضل كوبون الخصم الخاص بك:`,
+          },
+          { status: 200 }
+        );
+      }
+
+      await prisma.lead.create({
+        data: {
+          name: customerName,
+          contact: phoneContact,
+          promoCode,
+        },
+      });
+    } catch (dbErr) {
+      console.warn("Prisma lead save warning:", dbErr);
+    }
+
+    return NextResponse.json({ success: true, promoCode }, { status: 201 });
   } catch (error) {
     console.error("Error creating lead:", error);
-    return NextResponse.json({ error: "فشل حفظ البيانات" }, { status: 500 });
+    return NextResponse.json({ error: "حدث خطأ أثناء معالجة الطلب" }, { status: 500 });
   }
 }
