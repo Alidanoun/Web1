@@ -87,7 +87,7 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch("/api/stats");
+      const res = await fetch("/api/stats", { credentials: "same-origin" });
       if (res.ok) {
         const data = await res.json();
         setStats(data);
