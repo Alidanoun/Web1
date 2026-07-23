@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import LeadForm from "@/components/LeadForm";
+import ScanTracker from "@/components/ScanTracker";
 
 interface CategoryRecipe {
   id: string;
@@ -92,6 +93,7 @@ export default function HomePage() {
 
   return (
     <div className="container animate-fade-in">
+      <ScanTracker productId="home" />
       {/* Brand Header */}
       <header style={{ textAlign: "center", marginBottom: "2rem" }}>
         {/* Animated double ring logo */}

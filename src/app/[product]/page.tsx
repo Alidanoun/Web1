@@ -9,7 +9,6 @@ import LeadForm from "@/components/LeadForm";
 import OrderModal from "@/components/OrderModal";
 import LoyaltyTracker from "@/components/LoyaltyTracker";
 import VideoPlayer from "@/components/VideoPlayer";
-import ScanTracker from "@/components/ScanTracker";
 import type { Viewport } from "next";
 
 export const viewport: Viewport = {
@@ -80,7 +79,6 @@ export default async function ProductRecipePage({ params, searchParams }: PagePr
 
   return (
     <div className="container animate-fade-in">
-      <ScanTracker productId={productId} />
       {/* Back to Home Link */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
         <Link

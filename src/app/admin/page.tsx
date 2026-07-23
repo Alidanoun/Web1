@@ -379,22 +379,19 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {["steak", "burger", "kebab", "ribs"].map((p) => {
-                      const label = p === "steak" ? "🥩 ستيك" : p === "burger" ? "🍔 برغر" : p === "kebab" ? "🔥 كباب" : "🍖 ريش";
-                      const scanCount = stats.scans[p] || 0;
-                      const ratingInfo = stats.ratings[p] || { count: 0, avg: 0 };
+                    {[
+                      { id: "home", label: "🏠 الرمز العام (الصفحة الرئيسية)" },
+                      { id: "loyalty", label: "🦁 رمز جمع نقاط الولاء (الملحمة)" },
+                    ].map((item) => {
+                      const scanCount = stats.scans[item.id] || 0;
                       return (
-                        <tr key={p}>
-                          <td style={{ fontWeight: 700 }}>{label}</td>
-                          <td>{scanCount}</td>
+                        <tr key={item.id}>
+                          <td style={{ fontWeight: 700 }}>{item.label}</td>
+                          <td>{scanCount} مسحة</td>
                           <td>
-                            {ratingInfo.count > 0 ? (
-                              <span style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
-                                ★ {ratingInfo.avg} <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)" }}>({ratingInfo.count} تقييم)</span>
-                              </span>
-                            ) : (
-                              <span style={{ color: "var(--color-text-muted)" }}>لا يوجد تقييم</span>
-                            )}
+                            <span style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
+                              رمز فعال 100%
+                            </span>
                           </td>
                         </tr>
                       );
@@ -638,30 +635,21 @@ export default function AdminDashboard() {
           </div>
 
           {/* Products QR Grid */}
-          <div className="grid-categories">
+          <div className="grid-categories" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
             {[
-              { id: "burger", title: "عبوة برغر المركزية", icon: "🍔", path: "/burger" },
-              { id: "steak", title: "عبوة ستيك الريب آي", icon: "🥩", path: "/steak" },
-              { id: "kebab", title: "عبوة الكباب البلدي", icon: "🔥", path: "/kebab" },
-              { id: "ribs", title: "عبوة ريش الغنم", icon: "🍖", path: "/ribs" },
-              { id: "tenderloin", title: "عبوة ستيك التندرلوين", icon: "🍽️", path: "/tenderloin" },
-              { id: "kofta", title: "عبوة الكفتة بالصحن", icon: "🥘", path: "/kofta" },
-              { id: "awsal", title: "عبوة أوصال اللحم", icon: "🍢", path: "/awsal" },
-              { id: "smash", title: "عبوة برغر السماش", icon: "🧀", path: "/smash" },
               { id: "home", title: "الرمز العام (الصفحة الرئيسية)", icon: "🏠", path: "/" },
               { id: "loyalty", title: "رمز جمع نقاط الولاء (يُعلق في الملحمة)", icon: "🦁", path: "/collect" },
             ].map((prod) => {
-              const isRecipe = prod.path !== "/" && prod.path !== "/collect";
-              const fullUrl = `${domainHost.replace(/\/$/, "")}${prod.path}${isRecipe ? "?source=qr" : ""}`;
+              const fullUrl = `${domainHost.replace(/\/$/, "")}${prod.path}`;
               const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(fullUrl)}`;
 
               return (
                 <div key={prod.id} className="card card-gold-border" style={{ textAlign: "center" }}>
-                  <span style={{ fontSize: "2rem", display: "block" }}>{prod.icon}</span>
-                  <h4 style={{ fontWeight: 800, fontSize: "1.05rem", color: "white", margin: "0.35rem 0" }}>
+                  <span style={{ fontSize: "2.5rem", display: "block" }}>{prod.icon}</span>
+                  <h4 style={{ fontWeight: 800, fontSize: "1.1rem", color: "white", margin: "0.5rem 0" }}>
                     {prod.title}
                   </h4>
-                  <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", marginBottom: "0.5rem", direction: "ltr" }}>
+                  <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", marginBottom: "0.75rem", direction: "ltr" }}>
                     {fullUrl}
                   </p>
 
@@ -676,40 +664,24 @@ export default function AdminDashboard() {
                       boxShadow: "0 0 15px rgba(223, 138, 39, 0.2)",
                     }}
                   >
-                    <img src={qrImageUrl} alt={prod.title} style={{ width: "160px", height: "160px", display: "block" }} />
+                    <img src={qrImageUrl} alt={prod.title} style={{ width: "180px", height: "180px", display: "block" }} />
                   </div>
 
                   <div style={{ display: "flex", gap: "0.5rem", flexDirection: "column" }}>
-                    {prod.id !== "home" && prod.id !== "loyalty" ? (
-                      <div
-                        style={{
-                          background: "rgba(223, 138, 39, 0.1)",
-                          border: "1px solid var(--color-brand-gold)",
-                          color: "white",
-                          borderRadius: "8px",
-                          padding: "0.5rem",
-                          fontSize: "0.85rem",
-                          fontWeight: 700,
-                          textAlign: "center"
-                        }}
-                      >
-                        👁️ عدد الزيارات (مسح الـ QR): <strong style={{ color: "var(--color-brand-gold)", fontSize: "1rem" }}>{stats ? (stats.scans[prod.id] || 0) : 0}</strong>
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          background: "rgba(255,255,255,0.03)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          color: "var(--color-text-muted)",
-                          borderRadius: "8px",
-                          padding: "0.5rem",
-                          fontSize: "0.85rem",
-                          textAlign: "center"
-                        }}
-                      >
-                        صالح للمسح المباشر
-                      </div>
-                    )}
+                    <div
+                      style={{
+                        background: "rgba(223, 138, 39, 0.1)",
+                        border: "1px solid var(--color-brand-gold)",
+                        color: "white",
+                        borderRadius: "8px",
+                        padding: "0.5rem",
+                        fontSize: "0.85rem",
+                        fontWeight: 700,
+                        textAlign: "center"
+                      }}
+                    >
+                      👁️ عدد الزيارات (مسح الـ QR): <strong style={{ color: "var(--color-brand-gold)", fontSize: "1rem" }}>{stats ? (stats.scans[prod.id] || 0) : 0}</strong>
+                    </div>
 
                     <button
                       onClick={() => {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import ScanTracker from "@/components/ScanTracker";
 
 export default function LoyaltyCollectPage() {
   const [points, setPoints] = useState<number | null>(null);
@@ -65,6 +66,7 @@ export default function LoyaltyCollectPage() {
 
   return (
     <div className="container animate-fade-in" style={{ maxWidth: "480px", paddingTop: "3rem" }}>
+      <ScanTracker productId="loyalty" />
       {/* Brand Header */}
       <header style={{ textAlign: "center", marginBottom: "2rem" }}>
         <div className="logo-container">
