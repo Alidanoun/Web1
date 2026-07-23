@@ -88,11 +88,12 @@ export default function AdminDashboard() {
   const fetchStats = async () => {
     try {
       const res = await fetch("/api/stats", { credentials: "same-origin" });
-      if (res.ok) {
-        const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
         setStats(data);
+        setError("");
       } else {
-        setError("فشل تحميل بيانات التحليلات.");
+        setError(data.error || "فشل الاتصال بقاعدة البيانات، يرجى التأكد من DATABASE_URL في Netlify.");
       }
     } catch (err) {
       console.error("Error fetching stats:", err);
