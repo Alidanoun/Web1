@@ -390,23 +390,44 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[
-                      { id: "home", label: "🏠 الرمز العام (الصفحة الرئيسية)" },
-                      { id: "loyalty", label: "🦁 رمز جمع نقاط الولاء (الملحمة)" },
-                    ].map((item) => {
-                      const scanCount = stats.scans[item.id] || 0;
-                      return (
-                        <tr key={item.id}>
-                          <td style={{ fontWeight: 700 }}>{item.label}</td>
-                          <td>{scanCount} مسحة</td>
-                          <td>
-                            <span style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
-                              رمز فعال 100%
-                            </span>
-                          </td>
-                        </tr>
+                    {(() => {
+                      const allKeys = Array.from(
+                        new Set([
+                          "home",
+                          "loyalty",
+                          ...Object.keys(recipes),
+                          ...Object.keys(stats.scans || {}),
+                        ])
                       );
-                    })}
+
+                      return allKeys.map((pKey) => {
+                        let label = pKey;
+                        if (pKey === "home") label = "🏠 الرمز العام (الصفحة الرئيسية)";
+                        else if (pKey === "loyalty") label = "🦁 رمز جمع نقاط الولاء (الملحمة)";
+                        else if (recipes[pKey]) label = (recipes[pKey].meatType === "chicken" ? "🍗 " : "🥩 ") + recipes[pKey].title;
+
+                        const scanCount = stats.scans[pKey] || 0;
+                        const ratingInfo = stats.ratings[pKey];
+
+                        return (
+                          <tr key={pKey}>
+                            <td style={{ fontWeight: 700, color: "white", fontSize: "0.85rem" }}>{label}</td>
+                            <td style={{ fontWeight: 700 }}>{scanCount} مسحة</td>
+                            <td>
+                              {ratingInfo && ratingInfo.count > 0 ? (
+                                <span style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
+                                  {"★".repeat(Math.round(ratingInfo.avg))} ({ratingInfo.avg})
+                                </span>
+                              ) : (
+                                <span style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
+                                  لا توجد تقييمات
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
                   </tbody>
                 </table>
               </div>
