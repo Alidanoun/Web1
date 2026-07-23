@@ -67,6 +67,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [seedLoading, setSeedLoading] = useState(false);
+  const [viewingComment, setViewingComment] = useState<any | null>(null);
 
   // Recipe editing state
   const [editingRecipe, setEditingRecipe] = useState<RecipeData | null>(null);
@@ -532,8 +533,35 @@ export default function AdminDashboard() {
                           <td style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
                             {"★".repeat(rate.stars)}{"☆".repeat(5 - rate.stars)}
                           </td>
-                          <td style={{ color: rate.comment ? "white" : "var(--color-text-muted)", fontStyle: rate.comment ? "normal" : "italic" }}>
-                            {rate.comment || "بدون تعليق مضاف"}
+                          <td style={{ color: rate.comment ? "white" : "var(--color-text-muted)", fontStyle: rate.comment ? "normal" : "italic", maxWidth: "260px" }}>
+                            {rate.comment ? (
+                              rate.comment.length > 20 ? (
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                                  <span style={{ wordBreak: "break-word" }}>{rate.comment.substring(0, 18)}...</span>
+                                  <button
+                                    onClick={() => setViewingComment(rate)}
+                                    style={{
+                                      background: "rgba(223, 138, 39, 0.15)",
+                                      color: "var(--color-brand-gold)",
+                                      border: "1px solid rgba(223, 138, 39, 0.4)",
+                                      borderRadius: "6px",
+                                      padding: "0.2rem 0.55rem",
+                                      fontSize: "0.75rem",
+                                      fontWeight: 700,
+                                      cursor: "pointer",
+                                      whiteSpace: "nowrap",
+                                      transition: "all 0.2s ease",
+                                    }}
+                                  >
+                                    🔍 أظهر المزيد
+                                  </button>
+                                </div>
+                              ) : (
+                                rate.comment
+                              )
+                            ) : (
+                              "بدون تعليق مضاف"
+                            )}
                           </td>
                           <td style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
                             {new Date(rate.createdAt).toLocaleString("ar-EG", {
@@ -553,6 +581,138 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
+
+          {/* Full Comment Modal Popup */}
+          {viewingComment && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0, 0, 0, 0.85)",
+                backdropFilter: "blur(6px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 10000,
+                padding: "1rem",
+              }}
+              className="animate-fade-in"
+              onClick={() => setViewingComment(null)}
+            >
+              <div
+                className="card card-gold-border"
+                style={{
+                  maxWidth: "500px",
+                  width: "100%",
+                  padding: "1.75rem",
+                  position: "relative",
+                  background: "#141414",
+                  boxShadow: "0 20px 40px rgba(0,0,0,0.6)",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setViewingComment(null)}
+                  style={{
+                    position: "absolute",
+                    top: "1rem",
+                    left: "1rem",
+                    background: "rgba(255,255,255,0.08)",
+                    border: "none",
+                    color: "white",
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "50%",
+                    fontSize: "1.1rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  ✕
+                </button>
+
+                <h3
+                  style={{
+                    fontWeight: 800,
+                    fontSize: "1.15rem",
+                    color: "var(--color-brand-gold)",
+                    marginBottom: "1.25rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <span>💬</span> تفاصيل تعليق وملاحظة العميل
+                </h3>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", marginBottom: "1.5rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>المنتج / الوصفة:</span>
+                    <span style={{ color: "white", fontWeight: 800, fontSize: "0.95rem" }}>
+                      {viewingComment.product}
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>التقييم:</span>
+                    <span style={{ color: "var(--color-brand-gold)", fontWeight: 800, fontSize: "1.1rem" }}>
+                      {"★".repeat(viewingComment.stars)}{"☆".repeat(5 - viewingComment.stars)} ({viewingComment.stars}/5)
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>تاريخ الإدخال:</span>
+                    <span style={{ color: "var(--color-text-light)", fontSize: "0.8rem" }}>
+                      {new Date(viewingComment.createdAt).toLocaleString("ar-EG", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      })}
+                    </span>
+                  </div>
+
+                  <div style={{ borderTop: "1px dashed var(--color-border)", paddingTop: "0.85rem", marginTop: "0.25rem" }}>
+                    <span style={{ fontSize: "0.85rem", color: "var(--color-brand-gold)", fontWeight: 800, display: "block", marginBottom: "0.4rem" }}>
+                      📝 نص الملاحظة والتعليق كاملاً:
+                    </span>
+                    <div
+                      style={{
+                        background: "rgba(255, 255, 255, 0.04)",
+                        border: "1px solid rgba(255, 255, 255, 0.08)",
+                        borderRadius: "10px",
+                        padding: "1rem",
+                        color: "white",
+                        lineHeight: 1.6,
+                        fontSize: "0.95rem",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        maxHeight: "220px",
+                        overflowY: "auto",
+                      }}
+                    >
+                      {viewingComment.comment}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  className="btn-gold"
+                  onClick={() => setViewingComment(null)}
+                  style={{ width: "100%", padding: "0.65rem", fontSize: "0.9rem", fontWeight: 700 }}
+                >
+                  إغلاق النافذة
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
