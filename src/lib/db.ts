@@ -79,6 +79,7 @@ export async function ensureTablesExist() {
         "id" TEXT PRIMARY KEY,
         "title" TEXT NOT NULL,
         "category" TEXT NOT NULL,
+        "meatType" TEXT NOT NULL DEFAULT 'meat',
         "cuisine" TEXT NOT NULL DEFAULT 'arabic',
         "description" TEXT NOT NULL,
         "prepTime" TEXT NOT NULL,
@@ -95,6 +96,12 @@ export async function ensureTablesExist() {
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Recipe" ADD COLUMN IF NOT EXISTS "meatType" TEXT DEFAULT 'meat';`);
+    } catch (e) {
+      // Column already exists or handled by SQLite/PG
+    }
 
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "Package" (

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, ensureTablesExist } from "@/lib/db";
 import { recipes as defaultRecipes } from "@/data/recipes";
 
 // Helper to seed initial default recipes safely without deleting admin edits
@@ -13,6 +13,7 @@ async function seedDefaultRecipesIfEmpty() {
           id: r.id,
           title: r.title,
           category: r.category,
+          meatType: r.meatType || "meat",
           cuisine: r.cuisine || "arabic",
           description: r.description,
           prepTime: r.prepTime,
@@ -34,6 +35,7 @@ async function seedDefaultRecipesIfEmpty() {
 // GET /api/recipes - Fetch all recipes
 export async function GET() {
   try {
+    await ensureTablesExist();
     try {
       await seedDefaultRecipesIfEmpty();
       const dbRecipes = await prisma.recipe.findMany();
@@ -43,6 +45,7 @@ export async function GET() {
             id: r.id,
             title: r.title,
             category: r.category,
+            meatType: r.meatType || "meat",
             cuisine: r.cuisine || "arabic",
             description: r.description,
             prepTime: r.prepTime,
@@ -71,47 +74,52 @@ export async function GET() {
   }
 }
 
-// PUT /api/recipes - Update a recipe & its video & cuisine
+// PUT /api/recipes - Create or Update a recipe & category
 export async function PUT(req: Request) {
   try {
+    await ensureTablesExist();
     const body = await req.json();
-    const { id, title, category, cuisine, description, prepTime, cookTime, difficulty, videoUrl, ingredients, instructions, tips, marinade, recommendedWeights } = body;
+    const { id, title, category, meatType, cuisine, description, prepTime, cookTime, difficulty, videoUrl, ingredients, instructions, tips, marinade, recommendedWeights } = body;
 
     if (!id || !title) {
       return NextResponse.json({ error: "معرف الوصفة والعنوان مطلوبان" }, { status: 400 });
     }
 
+    const cleanId = id.trim().toLowerCase().replace(/\s+/g, "_");
+
     const updated = await prisma.recipe.upsert({
-      where: { id },
+      where: { id: cleanId },
       update: {
         title,
-        category: category || id,
+        category: category || cleanId,
+        meatType: meatType === "chicken" ? "chicken" : "meat",
         cuisine: cuisine || "arabic",
-        description,
-        prepTime,
-        cookTime,
-        difficulty,
+        description: description || "",
+        prepTime: prepTime || "15 دقيقة",
+        cookTime: cookTime || "10 دقائق",
+        difficulty: difficulty || "سهل",
         videoUrl: videoUrl || "",
-        ingredients: (typeof ingredients === "object" && ingredients !== null) ? JSON.stringify(ingredients) : JSON.stringify([]),
-        instructions: Array.isArray(instructions) ? JSON.stringify(instructions) : JSON.stringify([]),
-        tips: Array.isArray(tips) ? JSON.stringify(tips) : JSON.stringify([]),
-        marinade,
+        ingredients: Array.isArray(ingredients) ? JSON.stringify(ingredients) : (typeof ingredients === "string" ? JSON.stringify(ingredients.split("\n").filter(Boolean)) : JSON.stringify([])),
+        instructions: Array.isArray(instructions) ? JSON.stringify(instructions) : (typeof instructions === "string" ? JSON.stringify(instructions.split("\n").filter(Boolean)) : JSON.stringify([])),
+        tips: Array.isArray(tips) ? JSON.stringify(tips) : (typeof tips === "string" ? JSON.stringify(tips.split("\n").filter(Boolean)) : JSON.stringify([])),
+        marinade: marinade || "",
         recommendedWeights: recommendedWeights ? JSON.stringify(recommendedWeights) : null,
       },
       create: {
-        id,
+        id: cleanId,
         title,
-        category: category || id,
+        category: category || cleanId,
+        meatType: meatType === "chicken" ? "chicken" : "meat",
         cuisine: cuisine || "arabic",
-        description,
+        description: description || "",
         prepTime: prepTime || "15 دقيقة",
         cookTime: cookTime || "10 دقائق",
         difficulty: difficulty || "سهل",
         videoPlaceholder: "شاهد فيديو الوصفة",
         videoUrl: videoUrl || "",
-        ingredients: (typeof ingredients === "object" && ingredients !== null) ? JSON.stringify(ingredients) : JSON.stringify([]),
-        instructions: Array.isArray(instructions) ? JSON.stringify(instructions) : JSON.stringify([]),
-        tips: Array.isArray(tips) ? JSON.stringify(tips) : JSON.stringify([]),
+        ingredients: Array.isArray(ingredients) ? JSON.stringify(ingredients) : (typeof ingredients === "string" ? JSON.stringify(ingredients.split("\n").filter(Boolean)) : JSON.stringify([])),
+        instructions: Array.isArray(instructions) ? JSON.stringify(instructions) : (typeof instructions === "string" ? JSON.stringify(instructions.split("\n").filter(Boolean)) : JSON.stringify([])),
+        tips: Array.isArray(tips) ? JSON.stringify(tips) : (typeof tips === "string" ? JSON.stringify(tips.split("\n").filter(Boolean)) : JSON.stringify([])),
         marinade: marinade || "",
         recommendedWeights: recommendedWeights ? JSON.stringify(recommendedWeights) : null,
       },
@@ -120,6 +128,6 @@ export async function PUT(req: Request) {
     return NextResponse.json({ success: true, recipe: updated }, { status: 200 });
   } catch (error) {
     console.error("Error updating recipe:", error);
-    return NextResponse.json({ error: "فشل تحديث الوصفة" }, { status: 500 });
+    return NextResponse.json({ error: "فشل حفظ أو تحديث الوصفة" }, { status: 500 });
   }
 }

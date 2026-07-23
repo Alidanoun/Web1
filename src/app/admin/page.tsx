@@ -33,6 +33,7 @@ interface RecipeData {
   id: string;
   title: string;
   category: string;
+  meatType?: "meat" | "chicken";
   description: string;
   prepTime: string;
   cookTime: string;
@@ -80,6 +81,8 @@ export default function AdminDashboard() {
   const [formVideoUrl, setFormVideoUrl] = useState("");
   const [formId, setFormId] = useState("");
   const [formCuisine, setFormCuisine] = useState("arabic");
+  const [formMeatType, setFormMeatType] = useState<"meat" | "chicken">("meat");
+  const [formCategory, setFormCategory] = useState("ستيك");
   const [formIngredients, setFormIngredients] = useState("");
   const [formInstructions, setFormInstructions] = useState("");
   const [formTips, setFormTips] = useState("");
@@ -144,6 +147,8 @@ export default function AdminDashboard() {
     setEditingRecipe(recipe);
     setFormId(recipe.id);
     setFormTitle(recipe.title);
+    setFormCategory(recipe.category || "ستيك");
+    setFormMeatType(recipe.meatType || "meat");
     setFormDesc(recipe.description);
     setFormPrep(recipe.prepTime);
     setFormCook(recipe.cookTime);
@@ -169,7 +174,8 @@ export default function AdminDashboard() {
     const blankRecipe: RecipeData = {
       id: "",
       title: "",
-      category: "أخرى",
+      category: "جديد",
+      meatType: "meat",
       description: "",
       prepTime: "15 دقيقة",
       cookTime: "10 دقائق",
@@ -199,12 +205,14 @@ export default function AdminDashboard() {
         .filter(Boolean);
 
       const updatedData = {
-        id: formId ? formId.trim().toLowerCase() : (editingRecipe.id || "recipe-" + Date.now()),
+        id: formId ? formId.trim().toLowerCase().replace(/[^a-z0-9-_]/g, "") : ("recipe_" + Date.now()),
         title: formTitle,
+        category: formCategory || "عام",
+        meatType: formMeatType || "meat",
         description: formDesc,
         prepTime: formPrep,
         cookTime: formCook,
-        difficulty: editingRecipe.difficulty || "متوسط",
+        difficulty: editingRecipe.difficulty || "سهل",
         videoUrl: formVideoUrl,
         ingredients: parsedIngredients,
         instructions: formInstructions.split("\n").map((s) => s.trim()).filter(Boolean),
@@ -226,7 +234,8 @@ export default function AdminDashboard() {
           setEditingRecipe(null);
         }, 1200);
       } else {
-        alert("حدث خطأ أثناء حفظ التعديلات.");
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || "حدث خطأ أثناء حفظ التعديلات.");
       }
     } catch (err) {
       console.error("Save error:", err);
@@ -787,6 +796,36 @@ export default function AdminDashboard() {
                     * يحدد هذا المعرف رابط صفحة الـ QR (مثال: recipes-markzia.ddns.net/premium-kebab). لا يمكن تعديله بعد الحفظ.
                   </span>
                 )}
+              </div>
+
+              {/* Primary Type: Meat vs Chicken */}
+              <div className="responsive-two-column-grid">
+                <div className="form-group">
+                  <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
+                    🥩 🍗 الصنف الأساسي (نوع اللحم / الدجاج):
+                  </label>
+                  <select
+                    className="form-input"
+                    value={formMeatType}
+                    onChange={(e) => setFormMeatType(e.target.value as "meat" | "chicken")}
+                    style={{ background: "#111", color: "white", padding: "0.5rem", fontWeight: 700 }}
+                  >
+                    <option value="meat">🥩 قسم اللحوم الحمراء (ستيك، كباب، ريش، برغر...)</option>
+                    <option value="chicken">🍗 قسم الدجاج والطيور (شيش طاووق، برغر دجاج...)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">اسم التصنيف الفرعي (مثل: ستيك، برغر، كباب، شيش طاووق):</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={formCategory}
+                    onChange={(e) => setFormCategory(e.target.value)}
+                    placeholder="مثال: شيش طاووق، ستيك، برغر..."
+                    required
+                  />
+                </div>
               </div>
 
               {/* Cuisine Selector */}
