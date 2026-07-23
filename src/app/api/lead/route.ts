@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma, ensureTablesExist } from "@/lib/db";
 import crypto from "crypto";
 
-// Helper to generate custom alphanumeric suffix like '12yj5h', '456bgth'
 function generateAlphanumericSuffix(length = 6): string {
   const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
   let result = "";
@@ -34,12 +33,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "الرجاء إدخال رقم هاتف صحيح يحتوي على 8 أرقام على الأقل" }, { status: 400 });
     }
 
-    // Generate custom code formatted like: MARKZIA-12yj5h, MARKZIA-456bgth
     const suffix = generateAlphanumericSuffix(6);
     const promoCode = `MARKZIA-${suffix}`;
 
     try {
-      // Check if lead already exists by contact number to return existing code
       const existingLead = await prisma.lead.findFirst({
         where: { contact: phoneContact },
       });
@@ -63,13 +60,20 @@ export async function POST(req: Request) {
           promoCode,
         },
       });
-    } catch (dbErr) {
-      console.warn("Prisma lead save warning:", dbErr);
-    }
 
-    return NextResponse.json({ success: true, promoCode }, { status: 201 });
+      return NextResponse.json({ success: true, promoCode }, { status: 201 });
+    } catch (dbErr) {
+      console.error("Prisma lead save error:", dbErr);
+      return NextResponse.json(
+        { success: false, error: `فشل حفظ بيانات العميل بالداتا بيس: ${(dbErr as Error).message}` },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error("Error creating lead:", error);
-    return NextResponse.json({ error: "حدث خطأ أثناء معالجة الطلب" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : "حدث خطأ أثناء معالجة الطلب" },
+      { status: 500 }
+    );
   }
 }

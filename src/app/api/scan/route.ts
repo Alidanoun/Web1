@@ -15,19 +15,25 @@ export async function POST(req: Request) {
     const cleanProduct = product.trim().toLowerCase();
 
     try {
-      await prisma.scan.create({
+      const scan = await prisma.scan.create({
         data: {
           id: crypto.randomUUID(),
           product: cleanProduct,
         },
       });
+      return NextResponse.json({ success: true, scan }, { status: 200 });
     } catch (dbErr) {
-      console.warn("DB scan logging warning:", dbErr);
+      console.error("DB scan creation error:", dbErr);
+      return NextResponse.json(
+        { success: false, error: `فشل حفظ المسح بالداتا بيس: ${(dbErr as Error).message}` },
+        { status: 500 }
+      );
     }
-
-    return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Error logging scan:", error);
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : "خطأ غير متوقع" },
+      { status: 500 }
+    );
   }
 }

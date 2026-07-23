@@ -5,7 +5,6 @@ export async function GET() {
   try {
     await ensureTablesExist();
 
-    // 1. Get total scans count grouped by product
     const allScans = await prisma.scan.findMany({ select: { product: true } });
     const scans = allScans.reduce((acc: Record<string, number>, curr) => {
       const p = curr.product.toLowerCase();
@@ -13,7 +12,6 @@ export async function GET() {
       return acc;
     }, {} as Record<string, number>);
 
-    // 2. Get ratings count & average grouped by product
     const allRatings = await prisma.rating.findMany({ select: { product: true, stars: true } });
     const ratingAgg = allRatings.reduce((acc: Record<string, { total: number; count: number }>, curr) => {
       const p = curr.product.toLowerCase();
@@ -32,14 +30,12 @@ export async function GET() {
       };
     });
 
-    // 3. Get total leads & recent lead records
     const totalLeads = await prisma.lead.count();
     const recentLeads = await prisma.lead.findMany({
       orderBy: { createdAt: "desc" },
       take: 15,
     });
 
-    // 4. Get order clicks grouped by platform
     const allClicks = await prisma.orderClick.findMany({ select: { platform: true } });
     const clicks = allClicks.reduce((acc: Record<string, number>, curr) => {
       const pl = curr.platform.toLowerCase();
@@ -47,13 +43,11 @@ export async function GET() {
       return acc;
     }, {} as Record<string, number>);
 
-    // 5. Get recent scan events
     const recentScans = await prisma.scan.findMany({
       orderBy: { createdAt: "desc" },
       take: 10,
     });
 
-    // 6. Get recent ratings with feedback comments
     const recentRatings = await prisma.rating.findMany({
       orderBy: { createdAt: "desc" },
       take: 15,
@@ -76,9 +70,11 @@ export async function GET() {
     );
   } catch (error) {
     console.error("Error gathering stats:", error);
+    const msg = error instanceof Error ? error.message : "فشل جلب الإحصائيات";
     return NextResponse.json(
       {
-        success: true,
+        success: false,
+        error: `خطأ بالداتا بيس: ${msg}`,
         scans: {},
         ratings: {},
         leads: { total: 0, recent: [] },
@@ -86,7 +82,7 @@ export async function GET() {
         recentScans: [],
         recentRatings: [],
       },
-      { status: 200 }
+      { status: 500 }
     );
   }
 }
