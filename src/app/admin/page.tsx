@@ -778,27 +778,7 @@ export default function AdminDashboard() {
             )}
 
             <form onSubmit={handleSaveRecipe}>
-              {/* Recipe ID (Only editable for new recipes) */}
-              <div className="form-group">
-                <label className="form-label">معرّف الوصفة (ID بالإنجليزية - فريد):</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="مثال: premium-kebab أو ribs-special (بدون مسافات)"
-                  value={formId}
-                  onChange={(e) => setFormId(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ""))}
-                  disabled={!!editingRecipe.id}
-                  required
-                  style={{ direction: "ltr", textAlign: "left" }}
-                />
-                {!editingRecipe.id && (
-                  <span style={{ fontSize: "0.72rem", color: "var(--color-brand-gold)" }}>
-                    * يحدد هذا المعرف رابط صفحة الـ QR (مثال: recipes-markzia.ddns.net/premium-kebab). لا يمكن تعديله بعد الحفظ.
-                  </span>
-                )}
-              </div>
-
-              {/* Primary Type: Meat vs Chicken */}
+              {/* Primary Type: Meat vs Chicken & Subcategory */}
               <div className="responsive-two-column-grid">
                 <div className="form-group">
                   <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
@@ -826,20 +806,6 @@ export default function AdminDashboard() {
                     required
                   />
                 </div>
-              </div>
-
-              {/* Cuisine Selector */}
-              <div className="form-group">
-                <label className="form-label">تصنيف المطبخ (Cuisine):</label>
-                <select
-                  className="form-input"
-                  value={formCuisine}
-                  onChange={(e) => setFormCuisine(e.target.value)}
-                  style={{ background: "#111", color: "white", padding: "0.5rem" }}
-                >
-                  <option value="arabic">🇦🇪 🇸🇦 عربي وشرقي</option>
-                  <option value="international">🌎 عالمي / إنترناشيونال</option>
-                </select>
               </div>
               {/* Video URL Input */}
               <div className="form-group">
