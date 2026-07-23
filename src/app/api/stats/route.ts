@@ -4,37 +4,33 @@ import { prisma, ensureTablesExist } from "@/lib/db";
 export async function GET() {
   try {
     await ensureTablesExist();
-    // 1. Get total scans count grouped by product
-    const scansGroup = await prisma.scan.groupBy({
-      by: ["product"],
-      _count: {
-        _all: true,
-      },
-    });
 
-    const scans = scansGroup.reduce((acc: Record<string, number>, curr: (typeof scansGroup)[number]) => {
-      acc[curr.product] = curr._count._all;
+    // 1. Get total scans count grouped by product
+    const allScans = await prisma.scan.findMany({ select: { product: true } });
+    const scans = allScans.reduce((acc: Record<string, number>, curr) => {
+      const p = curr.product.toLowerCase();
+      acc[p] = (acc[p] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
     // 2. Get ratings count & average grouped by product
-    const ratingsGroup = await prisma.rating.groupBy({
-      by: ["product"],
-      _count: {
-        stars: true,
-      },
-      _avg: {
-        stars: true,
-      },
-    });
-
-    const ratings = ratingsGroup.reduce((acc: Record<string, { count: number; avg: number }>, curr: (typeof ratingsGroup)[number]) => {
-      acc[curr.product] = {
-        count: curr._count.stars,
-        avg: curr._avg.stars ? Number(curr._avg.stars.toFixed(1)) : 0,
-      };
+    const allRatings = await prisma.rating.findMany({ select: { product: true, stars: true } });
+    const ratingAgg = allRatings.reduce((acc: Record<string, { total: number; count: number }>, curr) => {
+      const p = curr.product.toLowerCase();
+      if (!acc[p]) acc[p] = { total: 0, count: 0 };
+      acc[p].total += curr.stars;
+      acc[p].count += 1;
       return acc;
-    }, {} as Record<string, { count: number; avg: number }>);
+    }, {});
+
+    const ratings: Record<string, { count: number; avg: number }> = {};
+    Object.keys(ratingAgg).forEach((p) => {
+      const info = ratingAgg[p];
+      ratings[p] = {
+        count: info.count,
+        avg: info.count > 0 ? Number((info.total / info.count).toFixed(1)) : 0,
+      };
+    });
 
     // 3. Get total leads & recent lead records
     const totalLeads = await prisma.lead.count();
@@ -44,15 +40,10 @@ export async function GET() {
     });
 
     // 4. Get order clicks grouped by platform
-    const clicksGroup = await prisma.orderClick.groupBy({
-      by: ["platform"],
-      _count: {
-        _all: true,
-      },
-    });
-
-    const clicks = clicksGroup.reduce((acc: Record<string, number>, curr: (typeof clicksGroup)[number]) => {
-      acc[curr.platform] = curr._count._all;
+    const allClicks = await prisma.orderClick.findMany({ select: { platform: true } });
+    const clicks = allClicks.reduce((acc: Record<string, number>, curr) => {
+      const pl = curr.platform.toLowerCase();
+      acc[pl] = (acc[pl] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 

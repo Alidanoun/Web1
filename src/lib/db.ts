@@ -1,13 +1,35 @@
 import { PrismaClient } from '@prisma/client';
 
+function getDbUrl() {
+  let url = process.env.DATABASE_URL || '';
+  if (url && (url.startsWith('postgres://') || url.startsWith('postgresql://'))) {
+    if (!url.includes('sslmode=')) {
+      url += url.includes('?') ? '&sslmode=require' : '?sslmode=require';
+    }
+  }
+  return url;
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
   initialized: boolean | undefined;
 };
 
+const dbUrl = getDbUrl();
+
 export const prisma =
   globalForPrisma.prisma ??
-  new PrismaClient();
+  new PrismaClient(
+    dbUrl
+      ? {
+          datasources: {
+            db: {
+              url: dbUrl,
+            },
+          },
+        }
+      : undefined
+  );
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
