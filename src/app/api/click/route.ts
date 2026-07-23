@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, ensureTablesExist } from "@/lib/db";
+import crypto from "crypto";
 
 export async function POST(req: Request) {
   try {
+    await ensureTablesExist();
+
     const { product, platform } = await req.json();
 
     if (!product || !platform) {
@@ -12,6 +15,7 @@ export async function POST(req: Request) {
     try {
       await prisma.orderClick.create({
         data: {
+          id: crypto.randomUUID(),
           product: String(product),
           platform: String(platform),
         },

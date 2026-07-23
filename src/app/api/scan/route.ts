@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, ensureTablesExist } from "@/lib/db";
+import crypto from "crypto";
 
 export async function POST(req: Request) {
   try {
+    await ensureTablesExist();
+
     const { product } = await req.json();
 
     if (!product || typeof product !== "string") {
@@ -14,6 +17,7 @@ export async function POST(req: Request) {
     try {
       await prisma.scan.create({
         data: {
+          id: crypto.randomUUID(),
           product: cleanProduct,
         },
       });

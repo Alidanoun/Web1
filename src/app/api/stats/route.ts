@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, ensureTablesExist } from "@/lib/db";
 
 export async function GET() {
   try {
+    await ensureTablesExist();
     // 1. Get total scans count grouped by product
     const scansGroup = await prisma.scan.groupBy({
       by: ["product"],

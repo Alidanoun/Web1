@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, ensureTablesExist } from "@/lib/db";
+import crypto from "crypto";
 
 // Helper to generate custom alphanumeric suffix like '12yj5h', '456bgth'
 function generateAlphanumericSuffix(length = 6): string {
@@ -13,6 +14,8 @@ function generateAlphanumericSuffix(length = 6): string {
 
 export async function POST(req: Request) {
   try {
+    await ensureTablesExist();
+
     const { name, contact } = await req.json();
 
     if (!name || typeof name !== "string" || name.trim() === "") {
@@ -28,7 +31,7 @@ export async function POST(req: Request) {
     const cleanPhone = phoneContact.replace(/[^0-9+]/g, "");
 
     if (cleanPhone.length < 8) {
-      return NextResponse.json({ error: "الرجاء إدخال رقم هاتف صحسح يحتوي على 8 أرقام على الأقل" }, { status: 400 });
+      return NextResponse.json({ error: "الرجاء إدخال رقم هاتف صحيح يحتوي على 8 أرقام على الأقل" }, { status: 400 });
     }
 
     // Generate custom code formatted like: MARKZIA-12yj5h, MARKZIA-456bgth
@@ -54,6 +57,7 @@ export async function POST(req: Request) {
 
       await prisma.lead.create({
         data: {
+          id: crypto.randomUUID(),
           name: customerName,
           contact: phoneContact,
           promoCode,
