@@ -480,7 +480,7 @@ export default function AdminDashboard() {
                     <thead>
                       <tr>
                         <th>المنتج / الوصفة</th>
-                        <th>مرات دخول العملاء</th>
+                        <th style={{ color: "var(--color-brand-gold)" }}>مرات دخول العملاء</th>
                         <th>التقييم</th>
                       </tr>
                     </thead>
