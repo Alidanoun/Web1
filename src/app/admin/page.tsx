@@ -69,6 +69,13 @@ export default function AdminDashboard() {
   const [seedLoading, setSeedLoading] = useState(false);
   const [viewingComment, setViewingComment] = useState<any | null>(null);
 
+  // Performance table search, filter, sort & pagination state
+  const [perfSearch, setPerfSearch] = useState("");
+  const [perfTypeFilter, setPerfTypeFilter] = useState<"all" | "meat" | "chicken">("all");
+  const [perfSortBy, setPerfSortBy] = useState<"scans" | "rating" | "title">("scans");
+  const [perfPage, setPerfPage] = useState(1);
+  const itemsPerPage = 6;
+
   // Recipe editing state
   const [editingRecipe, setEditingRecipe] = useState<RecipeData | null>(null);
   const [savingRecipe, setSavingRecipe] = useState(false);
@@ -376,61 +383,262 @@ export default function AdminDashboard() {
           {/* Product & Platform Cards side-by-side on Desktop */}
           <div className="grid-two-column">
             {/* Product Performance Card */}
-            <div className="card">
-              <h3 style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--color-brand-gold)", marginBottom: "0.75rem" }}>
-                📊 أداء المنتجات والوصفات
-              </h3>
-              <div className="admin-table-container">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>المنتج</th>
-                      <th>مرات المسح</th>
-                      <th>تقييم الوصفة</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const allKeys = Array.from(
-                        new Set([
-                          "home",
-                          "loyalty",
-                          ...Object.keys(recipes),
-                          ...Object.keys(stats.scans || {}),
-                        ])
-                      );
+            <div className="card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <h3 style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--color-brand-gold)", margin: 0 }}>
+                    📊 أداء المنتجات والوصفات
+                  </h3>
+                  <span style={{ fontSize: "0.72rem", color: "var(--color-text-muted)", background: "rgba(255,255,255,0.05)", padding: "0.2rem 0.6rem", borderRadius: "10px" }}>
+                    إجمالي المنتجات: {Object.keys(recipes).length + 2}
+                  </span>
+                </div>
 
-                      return allKeys.map((pKey) => {
-                        let label = pKey;
-                        if (pKey === "home") label = "🏠 الرمز العام (الصفحة الرئيسية)";
-                        else if (pKey === "loyalty") label = "🦁 رمز جمع نقاط الولاء (الملحمة)";
-                        else if (recipes[pKey]) label = (recipes[pKey].meatType === "chicken" ? "🍗 " : "🥩 ") + recipes[pKey].title;
+                {/* Search Bar & Filter Controls */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                  {/* Search Input */}
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="🔍 ابحث عن اسم وصفة أو طبق..."
+                    value={perfSearch}
+                    onChange={(e) => {
+                      setPerfSearch(e.target.value);
+                      setPerfPage(1);
+                    }}
+                    style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem", background: "#111" }}
+                  />
 
-                        const scanCount = stats.scans[pKey] || 0;
-                        const ratingInfo = stats.ratings[pKey];
+                  {/* Filter Pills & Sort Selector */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                    {/* Filter Pills */}
+                    <div style={{ display: "flex", gap: "0.3rem" }}>
+                      <button
+                        onClick={() => { setPerfTypeFilter("all"); setPerfPage(1); }}
+                        style={{
+                          background: perfTypeFilter === "all" ? "var(--color-brand-gold)" : "rgba(255,255,255,0.05)",
+                          color: perfTypeFilter === "all" ? "white" : "var(--color-text-muted)",
+                          border: "none",
+                          borderRadius: "12px",
+                          padding: "0.25rem 0.65rem",
+                          fontSize: "0.72rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        الكل
+                      </button>
+                      <button
+                        onClick={() => { setPerfTypeFilter("meat"); setPerfPage(1); }}
+                        style={{
+                          background: perfTypeFilter === "meat" ? "var(--color-brand-gold)" : "rgba(255,255,255,0.05)",
+                          color: perfTypeFilter === "meat" ? "white" : "var(--color-text-muted)",
+                          border: "none",
+                          borderRadius: "12px",
+                          padding: "0.25rem 0.65rem",
+                          fontSize: "0.72rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        🥩 لحوم
+                      </button>
+                      <button
+                        onClick={() => { setPerfTypeFilter("chicken"); setPerfPage(1); }}
+                        style={{
+                          background: perfTypeFilter === "chicken" ? "var(--color-brand-gold)" : "rgba(255,255,255,0.05)",
+                          color: perfTypeFilter === "chicken" ? "white" : "var(--color-text-muted)",
+                          border: "none",
+                          borderRadius: "12px",
+                          padding: "0.25rem 0.65rem",
+                          fontSize: "0.72rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        🍗 دجاج
+                      </button>
+                    </div>
 
-                        return (
-                          <tr key={pKey}>
-                            <td style={{ fontWeight: 700, color: "white", fontSize: "0.85rem" }}>{label}</td>
-                            <td style={{ fontWeight: 700 }}>{scanCount} مسحة</td>
+                    {/* Sort Selector */}
+                    <select
+                      className="form-input"
+                      value={perfSortBy}
+                      onChange={(e) => { setPerfSortBy(e.target.value as any); setPerfPage(1); }}
+                      style={{ padding: "0.2rem 0.5rem", fontSize: "0.72rem", background: "#111", color: "white", width: "auto" }}
+                    >
+                      <option value="scans">🔝 الأكثر مسحاً</option>
+                      <option value="rating">⭐ الأعلى تقييماً</option>
+                      <option value="title">🔤 اسم الوصفة</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Table Container */}
+                <div className="admin-table-container">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>المنتج / الوصفة</th>
+                        <th>المسحات</th>
+                        <th>التقييم</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const allKeys = Array.from(
+                          new Set([
+                            "home",
+                            "loyalty",
+                            ...Object.keys(recipes),
+                            ...Object.keys(stats.scans || {}),
+                          ])
+                        );
+
+                        // 1. Build structured items
+                        let items = allKeys.map((pKey) => {
+                          let label = pKey;
+                          let meatType: "meat" | "chicken" | "system" = "system";
+
+                          if (pKey === "home") {
+                            label = "🏠 الرمز العام (الصفحة الرئيسية)";
+                          } else if (pKey === "loyalty") {
+                            label = "🦁 رمز جمع نقاط الولاء (الملحمة)";
+                          } else if (recipes[pKey]) {
+                            meatType = recipes[pKey].meatType === "chicken" ? "chicken" : "meat";
+                            label = (meatType === "chicken" ? "🍗 " : "🥩 ") + recipes[pKey].title;
+                          }
+
+                          const scanCount = stats.scans[pKey] || 0;
+                          const ratingInfo = stats.ratings[pKey] || { count: 0, avg: 0 };
+
+                          return {
+                            id: pKey,
+                            label,
+                            meatType,
+                            scanCount,
+                            ratingAvg: ratingInfo.avg,
+                            ratingCount: ratingInfo.count,
+                          };
+                        });
+
+                        // 2. Filter by search query
+                        if (perfSearch.trim()) {
+                          const q = perfSearch.trim().toLowerCase();
+                          items = items.filter((it) => it.label.toLowerCase().includes(q) || it.id.toLowerCase().includes(q));
+                        }
+
+                        // 3. Filter by Meat / Chicken type
+                        if (perfTypeFilter !== "all") {
+                          items = items.filter((it) => it.meatType === perfTypeFilter || it.meatType === "system");
+                        }
+
+                        // 4. Sort
+                        if (perfSortBy === "scans") {
+                          items.sort((a, b) => b.scanCount - a.scanCount);
+                        } else if (perfSortBy === "rating") {
+                          items.sort((a, b) => b.ratingAvg - a.ratingAvg);
+                        } else if (perfSortBy === "title") {
+                          items.sort((a, b) => a.label.localeCompare(b.label, "ar"));
+                        }
+
+                        // 5. Paginate
+                        const totalPages = Math.ceil(items.length / itemsPerPage) || 1;
+                        const currentPage = Math.min(perfPage, totalPages);
+                        const startIndex = (currentPage - 1) * itemsPerPage;
+                        const paginatedItems = items.slice(startIndex, startIndex + itemsPerPage);
+
+                        if (items.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={3} style={{ textAlign: "center", color: "var(--color-text-muted)", fontSize: "0.8rem", padding: "1.5rem" }}>
+                                لا توجد نتائج مطابقة للبحث أو الفلتر.
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return paginatedItems.map((item) => (
+                          <tr key={item.id}>
+                            <td style={{ fontWeight: 700, color: "white", fontSize: "0.82rem", maxWidth: "220px", wordBreak: "break-word" }}>
+                              {item.label}
+                            </td>
+                            <td style={{ fontWeight: 800, color: item.scanCount > 0 ? "var(--color-brand-gold)" : "white", fontSize: "0.85rem" }}>
+                              {item.scanCount}
+                            </td>
                             <td>
-                              {ratingInfo && ratingInfo.count > 0 ? (
-                                <span style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
-                                  {"★".repeat(Math.round(ratingInfo.avg))} ({ratingInfo.avg})
+                              {item.ratingCount > 0 ? (
+                                <span style={{ color: "var(--color-brand-gold)", fontWeight: 700, fontSize: "0.8rem" }}>
+                                  {"★".repeat(Math.round(item.ratingAvg))} ({item.ratingAvg})
                                 </span>
                               ) : (
-                                <span style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
+                                <span style={{ color: "var(--color-text-muted)", fontSize: "0.72rem" }}>
                                   لا توجد تقييمات
                                 </span>
                               )}
                             </td>
                           </tr>
-                        );
-                      });
-                    })()}
-                  </tbody>
-                </table>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+
+              {/* Pagination Controls */}
+              {(() => {
+                const allKeysCount = Array.from(
+                  new Set([
+                    "home",
+                    "loyalty",
+                    ...Object.keys(recipes),
+                    ...Object.keys(stats.scans || {}),
+                  ])
+                ).length;
+                const totalPages = Math.ceil(allKeysCount / itemsPerPage) || 1;
+
+                return (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.75rem", paddingTop: "0.5rem", borderTop: "1px dashed var(--color-border)" }}>
+                    <button
+                      disabled={perfPage <= 1}
+                      onClick={() => setPerfPage((p) => Math.max(1, p - 1))}
+                      style={{
+                        background: perfPage <= 1 ? "transparent" : "rgba(223, 138, 39, 0.15)",
+                        color: perfPage <= 1 ? "var(--color-text-muted)" : "var(--color-brand-gold)",
+                        border: "1px solid rgba(223, 138, 39, 0.3)",
+                        borderRadius: "6px",
+                        padding: "0.25rem 0.65rem",
+                        fontSize: "0.75rem",
+                        fontWeight: 700,
+                        cursor: perfPage <= 1 ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      السابق ➔
+                    </button>
+
+                    <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", fontWeight: 700 }}>
+                      صفحة {perfPage} من {totalPages}
+                    </span>
+
+                    <button
+                      disabled={perfPage >= totalPages}
+                      onClick={() => setPerfPage((p) => Math.min(totalPages, p + 1))}
+                      style={{
+                        background: perfPage >= totalPages ? "transparent" : "rgba(223, 138, 39, 0.15)",
+                        color: perfPage >= totalPages ? "var(--color-text-muted)" : "var(--color-brand-gold)",
+                        border: "1px solid rgba(223, 138, 39, 0.3)",
+                        borderRadius: "6px",
+                        padding: "0.25rem 0.65rem",
+                        fontSize: "0.75rem",
+                        fontWeight: 700,
+                        cursor: perfPage >= totalPages ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      ← التالي
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Platform Performance Card */}
