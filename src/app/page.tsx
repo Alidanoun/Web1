@@ -6,6 +6,7 @@ import LeadForm from "@/components/LeadForm";
 import ScanTracker from "@/components/ScanTracker";
 import { recipes as staticRecipes } from "@/data/recipes";
 
+// Force Vercel production rebuild with DATABASE_URL
 interface DisplayRecipe {
   id: string;
   title: string;
