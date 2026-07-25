@@ -1036,8 +1036,8 @@ export default function AdminDashboard() {
           {/* Products QR Grid */}
           <div className="grid-categories" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
             {[
-              { id: "home", title: "الرمز العام (الصفحة الرئيسية)", icon: "🏠", path: "/" },
-              { id: "loyalty", title: "رمز جمع نقاط الولاء (يُعلق في الملحمة)", icon: "🦁", path: "/collect" },
+              { id: "home", title: "الرمز العام (الصفحة الرئيسية)", icon: "🏠", path: "/?source=qr" },
+              { id: "loyalty", title: "رمز جمع نقاط الولاء (يُعلق في الملحمة)", icon: "🦁", path: "/collect?source=qr" },
             ].map((prod) => {
               const fullUrl = `${domainHost.replace(/\/$/, "")}${prod.path}`;
               const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(fullUrl)}`;
