@@ -1,51 +1,34 @@
 "use client";
 
-import { useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 interface ScanTrackerProps {
   productId: string;
 }
 
-function ScanTrackerInner({ productId }: ScanTrackerProps) {
-  const searchParams = useSearchParams();
-
+export default function ScanTracker({ productId }: ScanTrackerProps) {
   useEffect(() => {
     if (!productId) return;
 
-    // ONLY log a scan if the visitor came directly from a physical QR code scan (URL contains ?source=qr)
-    const source = searchParams ? searchParams.get("source") : null;
-    if (source !== "qr") {
-      return; // Normal page visit / refresh / link click -> DO NOT COUNT as a QR Scan!
-    }
-
-    // Session-based deduplication: Track scan event ONCE per browser session per product
-    const sessionKey = `markazia_scan_${productId}`;
+    // Session-based deduplication: Track customer entry ONCE per browser session per product/recipe
+    const sessionKey = `markazia_visit_${productId}`;
     if (typeof window !== "undefined") {
-      const alreadyScanned = sessionStorage.getItem(sessionKey);
-      if (alreadyScanned) {
-        return; // Skip duplicate scan logging in same session
+      const alreadyTracked = sessionStorage.getItem(sessionKey);
+      if (alreadyTracked) {
+        return; // Skip duplicate tracking on page refreshes in the same session
       }
       sessionStorage.setItem(sessionKey, "true");
     }
 
-    // Track scan event dynamically on client mount
+    // Record customer visit/entry event
     fetch("/api/scan", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ product: productId }),
-    }).catch((err) => console.error("Scan tracker network error:", err));
-  }, [productId, searchParams]);
+    }).catch((err) => console.error("Customer visit tracking network error:", err));
+  }, [productId]);
 
   return null;
-}
-
-export default function ScanTracker(props: ScanTrackerProps) {
-  return (
-    <Suspense fallback={null}>
-      <ScanTrackerInner {...props} />
-    </Suspense>
-  );
 }

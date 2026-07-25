@@ -309,7 +309,7 @@ export default function AdminDashboard() {
           <div className="grid-categories" style={{ marginBottom: "1.25rem" }}>
             <div className="card card-gold-border" style={{ padding: "1rem", textAlign: "center", marginBottom: 0 }}>
               <span style={{ fontSize: "1.5rem" }}>📱</span>
-              <h4 style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", margin: "0.25rem 0" }}>إجمالي مسح الـ QR</h4>
+              <h4 style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", margin: "0.25rem 0" }}>إجمالي دخول العملاء</h4>
               <strong style={{ fontSize: "1.5rem", color: "white" }}>{totalScans}</strong>
             </div>
 
@@ -467,7 +467,7 @@ export default function AdminDashboard() {
                       onChange={(e) => { setPerfSortBy(e.target.value as any); setPerfPage(1); }}
                       style={{ padding: "0.2rem 0.5rem", fontSize: "0.72rem", background: "#111", color: "white", width: "auto" }}
                     >
-                      <option value="scans">🔝 الأكثر مسحاً</option>
+                      <option value="scans">🔝 الأكثر زيارة ودخولاً</option>
                       <option value="rating">⭐ الأعلى تقييماً</option>
                       <option value="title">🔤 اسم الوصفة</option>
                     </select>
@@ -480,7 +480,7 @@ export default function AdminDashboard() {
                     <thead>
                       <tr>
                         <th>المنتج / الوصفة</th>
-                        <th>المسحات</th>
+                        <th>مرات دخول العملاء</th>
                         <th>التقييم</th>
                       </tr>
                     </thead>
@@ -564,7 +564,7 @@ export default function AdminDashboard() {
                               {item.label}
                             </td>
                             <td style={{ fontWeight: 800, color: item.scanCount > 0 ? "var(--color-brand-gold)" : "white", fontSize: "0.85rem" }}>
-                              {item.scanCount}
+                              {item.scanCount} زيارة
                             </td>
                             <td>
                               {item.ratingCount > 0 ? (
