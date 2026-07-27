@@ -82,8 +82,7 @@ export default function HomePage() {
       .catch((err) => {
         console.error("Failed to load recipes from API:", err);
         fallbackStatic();
-      })
-      .finally(() => setLoading(false));
+      });
   }, []);
 
   const fallbackStatic = () => {
