@@ -69,3 +69,10 @@ model Package {
   notes       String   @default("") // Extra details or suggestions
   updatedAt   DateTime @updatedAt
 }
+
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+

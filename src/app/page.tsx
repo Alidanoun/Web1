@@ -21,9 +21,25 @@ export default function HomePage() {
   const [selectedMeatType, setSelectedMeatType] = useState<"all" | "meat" | "chicken">("meat");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [recipesList, setRecipesList] = useState<DisplayRecipe[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState({
+    siteTitle: "ملاحم ومطاعم المركزية",
+    siteSubtitle: "اختر صنف اللحوم أو الدجاج المفضل لديك واكتشف أسرار تتبيل وطهي أصنافنا الفاخرة.",
+    meatTabLabel: "قسم اللحوم الحمراء",
+    chickenTabLabel: "قسم الدجاج والطيور",
+    allTabLabel: "جميع الأصناف",
+  });
 
   useEffect(() => {
+    // Fetch live settings from database
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.settings) {
+          setSettings((prev) => ({ ...prev, ...data.settings }));
+        }
+      })
+      .catch((err) => console.error("Failed to load settings:", err));
+
     // Fetch live recipes from database (with static fallback)
     fetch("/api/recipes")
       .then((res) => res.json())
@@ -129,7 +145,7 @@ export default function HomePage() {
             marginTop: "0.5rem",
           }}
         >
-          ملاﺣﻢ ومطاعم المركزية
+          {settings.siteTitle}
         </h1>
         <p
           style={{
@@ -140,7 +156,7 @@ export default function HomePage() {
             lineHeight: 1.5,
           }}
         >
-          اختر صنف اللحوم أو الدجاج المفضل لديك واكتشف أسرار تتبيل وطهي أصنافنا الفاخرة.
+          {settings.siteSubtitle}
         </p>
       </header>
 
@@ -176,7 +192,7 @@ export default function HomePage() {
               }}
               style={{ padding: "0.65rem 1.35rem", fontSize: "0.95rem", fontWeight: 800 }}
             >
-              🥩 قسم اللحوم الحمراء ({recipesList.filter(r => r.meatType === "meat").length})
+              🥩 {settings.meatTabLabel} ({recipesList.filter(r => r.meatType === "meat").length})
             </button>
 
             <button
@@ -187,7 +203,7 @@ export default function HomePage() {
               }}
               style={{ padding: "0.65rem 1.35rem", fontSize: "0.95rem", fontWeight: 800 }}
             >
-              🍗 قسم الدجاج والطيور ({recipesList.filter(r => r.meatType === "chicken").length})
+              🍗 {settings.chickenTabLabel} ({recipesList.filter(r => r.meatType === "chicken").length})
             </button>
 
             <button
@@ -198,7 +214,7 @@ export default function HomePage() {
               }}
               style={{ padding: "0.65rem 1rem", fontSize: "0.85rem" }}
             >
-              🌟 جميع الأصناف ({recipesList.length})
+              🌟 {settings.allTabLabel} ({recipesList.length})
             </button>
           </div>
 

@@ -117,6 +117,14 @@ export async function ensureTablesExist() {
       );
     `);
 
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "SiteSetting" (
+        "key" TEXT PRIMARY KEY,
+        "value" TEXT NOT NULL,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     globalForPrisma.initialized = true;
     console.log("DB Tables ensured successfully.");
   } catch (err) {

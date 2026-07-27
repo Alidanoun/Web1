@@ -60,7 +60,7 @@ interface PackageData {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"stats" | "recipes" | "qr">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "recipes" | "qr" | "settings">("stats");
   const [domainHost, setDomainHost] = useState("http://recipes-markzia.ddns.net");
   const [stats, setStats] = useState<StatsData | null>(null);
   const [recipes, setRecipes] = useState<Record<string, RecipeData>>({});
@@ -68,6 +68,15 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [seedLoading, setSeedLoading] = useState(false);
   const [viewingComment, setViewingComment] = useState<any | null>(null);
+
+  // Site Settings State
+  const [siteTitle, setSiteTitle] = useState("ملاحم ومطاعم المركزية");
+  const [siteSubtitle, setSiteSubtitle] = useState("اختر صنف اللحوم أو الدجاج المفضل لديك واكتشف أسرار تتبيل وطهي أصنافنا الفاخرة.");
+  const [meatTabLabel, setMeatTabLabel] = useState("قسم اللحوم الحمراء");
+  const [chickenTabLabel, setChickenTabLabel] = useState("قسم الدجاج والطيور");
+  const [allTabLabel, setAllTabLabel] = useState("جميع الأصناف");
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsSuccess, setSettingsSuccess] = useState(false);
 
   // Performance table search, filter, sort & pagination state
   const [perfSearch, setPerfSearch] = useState("");
@@ -126,11 +135,60 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch("/api/settings");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.settings) {
+          if (data.settings.siteTitle) setSiteTitle(data.settings.siteTitle);
+          if (data.settings.siteSubtitle) setSiteSubtitle(data.settings.siteSubtitle);
+          if (data.settings.meatTabLabel) setMeatTabLabel(data.settings.meatTabLabel);
+          if (data.settings.chickenTabLabel) setChickenTabLabel(data.settings.chickenTabLabel);
+          if (data.settings.allTabLabel) setAllTabLabel(data.settings.allTabLabel);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching settings:", err);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    setSettingsSuccess(false);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            siteTitle,
+            siteSubtitle,
+            meatTabLabel,
+            chickenTabLabel,
+            allTabLabel,
+          },
+        }),
+      });
+      if (res.ok) {
+        setSettingsSuccess(true);
+        setTimeout(() => setSettingsSuccess(false), 4000);
+      } else {
+        alert("حدث خطأ أثناء حفظ الإعدادات");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("فشل الاتصال بالخادم أثناء الحفظ");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.origin) {
       setDomainHost(window.location.origin);
     }
-    Promise.all([fetchStats(), fetchRecipes()]).then(() => setLoading(false));
+    Promise.all([fetchStats(), fetchRecipes(), fetchSettings()]).then(() => setLoading(false));
   }, []);
 
   const handleSeed = async () => {
@@ -297,6 +355,13 @@ export default function AdminDashboard() {
           style={{ fontSize: "0.95rem", padding: "0.6rem 1.25rem" }}
         >
           🖨️ استخراج وطباعة رموز الـ QR
+        </button>
+        <button
+          className={`doneness-tab ${activeTab === "settings" ? "active" : ""}`}
+          onClick={() => setActiveTab("settings")}
+          style={{ fontSize: "0.95rem", padding: "0.6rem 1.25rem" }}
+        >
+          ⚙️ إعدادات أسماء الموقع والأقسام
         </button>
       </div>
 
@@ -1319,6 +1384,105 @@ export default function AdminDashboard() {
       )}
 
 
+
+      {/* TAB 4: SITE SETTINGS */}
+      {activeTab === "settings" && (
+        <div className="card animate-fade-in" style={{ maxWidth: "650px", margin: "1.5rem auto 0 auto" }}>
+          <h3 style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--color-brand-gold)", marginBottom: "1.25rem", textAlign: "center" }}>
+            ⚙️ التحكم في أسماء الموقع وأقسام المنتجات
+          </h3>
+
+          {settingsSuccess && (
+            <div style={{ padding: "0.75rem", backgroundColor: "rgba(34, 197, 94, 0.15)", color: "#4ade80", borderRadius: "8px", marginBottom: "1.25rem", textAlign: "center", fontWeight: 700 }}>
+              ✅ تم حفظ الإعدادات بنجاح وتحديث الموقع الرئيسي!
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            <div>
+              <label style={{ display: "block", fontSize: "0.9rem", fontWeight: 700, marginBottom: "0.4rem", color: "white" }}>
+                🏷️ اسم الموقع الرئيسي (العنوان العلوي):
+              </label>
+              <input
+                type="text"
+                value={siteTitle}
+                onChange={(e) => setSiteTitle(e.target.value)}
+                placeholder="مثال: ملاحم ومطاعم المركزية"
+                style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white" }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: "0.9rem", fontWeight: 700, marginBottom: "0.4rem", color: "white" }}>
+                📝 الوصف الفرعي للموقع:
+              </label>
+              <textarea
+                rows={2}
+                value={siteSubtitle}
+                onChange={(e) => setSiteSubtitle(e.target.value)}
+                placeholder="اختر صنف اللحوم أو الدجاج المفضل لديك..."
+                style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white", resize: "vertical" }}
+              />
+            </div>
+
+            <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: "1.25rem" }}>
+              <h4 style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--color-brand-gold)", marginBottom: "0.85rem" }}>
+                🥩 أسماء الأقسام الرئيسية (أزرار التصفية في الموقع):
+              </h4>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: "0.3rem", color: "white" }}>
+                    🥩 اسم قسم اللحوم:
+                  </label>
+                  <input
+                    type="text"
+                    value={meatTabLabel}
+                    onChange={(e) => setMeatTabLabel(e.target.value)}
+                    placeholder="مثال: قسم اللحوم الحمراء"
+                    style={{ width: "100%", padding: "0.65rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white" }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: "0.3rem", color: "white" }}>
+                    🍗 اسم قسم الدجاج:
+                  </label>
+                  <input
+                    type="text"
+                    value={chickenTabLabel}
+                    onChange={(e) => setChickenTabLabel(e.target.value)}
+                    placeholder="مثال: قسم الدجاج"
+                    style={{ width: "100%", padding: "0.65rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white" }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: "0.3rem", color: "white" }}>
+                    🌟 اسم زر (جميع الأصناف):
+                  </label>
+                  <input
+                    type="text"
+                    value={allTabLabel}
+                    onChange={(e) => setAllTabLabel(e.target.value)}
+                    placeholder="مثال: جميع الأصناف"
+                    style={{ width: "100%", padding: "0.65rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              className="btn-gold"
+              onClick={handleSaveSettings}
+              disabled={savingSettings}
+              style={{ width: "100%", padding: "0.8rem", fontSize: "1rem", fontWeight: 800, marginTop: "0.5rem" }}
+            >
+              {savingSettings ? "جاري الحفظ..." : "💾 حفظ التغييرات"}
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
