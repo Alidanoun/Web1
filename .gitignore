@@ -16,6 +16,8 @@
 # next.js
 /.next/
 /out/
+/.firebase/
+/.netlify/
 
 # production
 /build
@@ -23,6 +25,7 @@
 # misc
 .DS_Store
 *.pem
+deno.lock
 
 # debug
 npm-debug.log*

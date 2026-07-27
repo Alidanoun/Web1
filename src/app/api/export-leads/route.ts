@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import type { Lead } from "@prisma/client";
+import { prisma, ensureTablesExist } from "@/lib/db";
 
 // GET /api/export-leads - Export all customer leads as a native Microsoft Excel file with RTL Arabic support and 100% separated columns
 export async function GET() {
   try {
-    const leads: Lead[] = await prisma.lead.findMany({
+    await ensureTablesExist();
+    const leads: any[] = await prisma.lead.findMany({
       orderBy: { createdAt: "desc" },
     });
 
     let rowsHtml = "";
 
-    leads.forEach((l: Lead) => {
+    leads.forEach((l: any) => {
       const name = (l.name || "عميل المركزية").trim();
       const contact = l.contact.trim();
       const code = l.promoCode.trim();
