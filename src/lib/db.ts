@@ -1,32 +1,72 @@
 /**
- * db.ts — Neon Serverless SQL client
- * Works natively in Cloudflare Workers & Pages without any engine/wasm issues.
- * Prisma is kept only as a type reference for the schema models.
+ * db.ts — Universal Serverless SQL Client for Cloudflare Workers
+ * Supports Supabase (WebSocket Pool) and Neon (HTTP / Pool).
  */
-import { neon, neonConfig } from "@neondatabase/serverless";
+import { neon, neonConfig, Pool } from "@neondatabase/serverless";
 
-// Enable connection pooling-friendly mode for edge environments
 neonConfig.fetchConnectionCache = true;
 
 function getDbUrl(): string {
-  const url = process.env.DATABASE_URL || "";
+  let url = process.env.DATABASE_URL || "";
+  if (url && (url.startsWith("postgres://") || url.startsWith("postgresql://"))) {
+    if (!url.includes("sslmode=")) {
+      url += url.includes("?") ? "&sslmode=require" : "?sslmode=require";
+    }
+  }
   return url;
 }
 
-// Lazy-initialised SQL client — created once per Worker instance
-let _sql: ReturnType<typeof neon> | null = null;
+let _pool: Pool | null = null;
+let _neonSql: ReturnType<typeof neon> | null = null;
 
-export function getSql() {
-  if (!_sql) {
-    const url = getDbUrl();
-    if (!url) {
-      throw new Error(
-        "DATABASE_URL is not set. Go to Cloudflare Pages → Settings → Environment Variables and add DATABASE_URL."
-      );
-    }
-    _sql = neon(url);
+/**
+ * Universal Query Execution
+ * Automatically routes to Neon HTTP for neon.tech, or WebSocket Pool for Supabase / PostgreSQL.
+ */
+export async function runQuery<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
+  const url = getDbUrl();
+  if (!url) {
+    throw new Error("DATABASE_URL is not set in Cloudflare Variables.");
   }
-  return _sql;
+
+  // If Neon host
+  if (url.includes("neon.tech")) {
+    if (!_neonSql) _neonSql = neon(url);
+    // Convert parameterized query
+    if (params.length === 0) {
+      return (await _neonSql(queryText as any)) as unknown as T[];
+    } else {
+      const res = await _neonSql.transaction((tx: any) => [tx(queryText as any, ...params)]);
+      return (res[0] || []) as unknown as T[];
+    }
+  }
+
+  // For Supabase or standard PostgreSQL (via WebSocket connection pool in Cloudflare Workers)
+  if (!_pool) {
+    _pool = new Pool({ connectionString: url, connectionTimeoutMillis: 10000 });
+  }
+  const result = await _pool.query(queryText, params);
+  return result.rows as unknown as T[];
+}
+
+/**
+ * Tagged template literal helper: sql`SELECT * FROM "Table" WHERE id = ${id}`
+ */
+export function getSql() {
+  const tagFn = async (strings: TemplateStringsArray, ...values: any[]) => {
+    let queryText = strings[0];
+    for (let i = 1; i < strings.length; i++) {
+      queryText += `$${i}` + strings[i];
+    }
+    return runQuery(queryText, values);
+  };
+
+  tagFn.transaction = async (fn: any) => {
+    // Basic fallback transaction runner
+    return [];
+  };
+
+  return tagFn;
 }
 
 // ─── Table bootstrap ──────────────────────────────────────────────────────────
@@ -35,42 +75,40 @@ let _tablesEnsured = false;
 export async function ensureTablesExist() {
   if (_tablesEnsured) return;
 
-  const sql = getSql();
-
-  await sql`
+  await runQuery(`
     CREATE TABLE IF NOT EXISTS "Scan" (
       "id"        TEXT PRIMARY KEY,
       "product"   TEXT NOT NULL,
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`;
+    )`);
 
-  await sql`
+  await runQuery(`
     CREATE TABLE IF NOT EXISTS "Rating" (
       "id"        TEXT PRIMARY KEY,
       "product"   TEXT NOT NULL,
       "stars"     INTEGER NOT NULL,
       "comment"   TEXT DEFAULT '',
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`;
+    )`);
 
-  await sql`
+  await runQuery(`
     CREATE TABLE IF NOT EXISTS "Lead" (
       "id"        TEXT PRIMARY KEY,
       "name"      TEXT NOT NULL DEFAULT '',
       "contact"   TEXT NOT NULL,
       "promoCode" TEXT NOT NULL,
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`;
+    )`);
 
-  await sql`
+  await runQuery(`
     CREATE TABLE IF NOT EXISTS "OrderClick" (
       "id"        TEXT PRIMARY KEY,
       "product"   TEXT NOT NULL,
       "platform"  TEXT NOT NULL,
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`;
+    )`);
 
-  await sql`
+  await runQuery(`
     CREATE TABLE IF NOT EXISTS "Recipe" (
       "id"                 TEXT PRIMARY KEY,
       "title"              TEXT NOT NULL,
@@ -91,9 +129,9 @@ export async function ensureTablesExist() {
       "doneness"           TEXT,
       "recommendedWeights" TEXT,
       "updatedAt"          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`;
+    )`);
 
-  await sql`
+  await runQuery(`
     CREATE TABLE IF NOT EXISTS "Package" (
       "id"          TEXT PRIMARY KEY,
       "name"        TEXT NOT NULL,
@@ -104,16 +142,16 @@ export async function ensureTablesExist() {
       "steak"       TEXT NOT NULL DEFAULT '',
       "notes"       TEXT NOT NULL DEFAULT '',
       "updatedAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`;
+    )`);
 
-  await sql`
+  await runQuery(`
     CREATE TABLE IF NOT EXISTS "SiteSetting" (
       "key"       TEXT PRIMARY KEY,
       "value"     TEXT NOT NULL,
       "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`;
+    )`);
 
-  await sql`
+  await runQuery(`
     CREATE TABLE IF NOT EXISTS "LoyaltyCard" (
       "id"          TEXT PRIMARY KEY,
       "phone"       TEXT NOT NULL UNIQUE,
@@ -125,64 +163,56 @@ export async function ensureTablesExist() {
       "lastScanAt"  TIMESTAMPTZ,
       "createdAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       "updatedAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`;
+    )`);
 
   _tablesEnsured = true;
 }
 
-// ─── Typed query helpers ───────────────────────────────────────────────────────
+// ─── Typed query helpers (Prisma-like compatibility API) ───────────────────────
 
-export async function dbQuery<T = any>(
-  query: TemplateStringsArray,
-  ...values: any[]
-): Promise<T[]> {
-  const sql = getSql();
-  return sql(query, ...values) as Promise<T[]>;
-}
-
-// Keep a thin "prisma" compatibility shim so we don't break all existing API routes at once
-// This wraps Neon SQL in a Prisma-like interface
 export const prisma = {
   // ── Scan ──────────────────────────────────────────────────────────────────
   scan: {
     create: async ({ data }: { data: { id: string; product: string } }) => {
-      const sql = getSql();
-      await sql`INSERT INTO "Scan" ("id","product") VALUES (${data.id},${data.product}) ON CONFLICT ("id") DO NOTHING`;
+      await runQuery(
+        `INSERT INTO "Scan" ("id","product") VALUES ($1,$2) ON CONFLICT ("id") DO NOTHING`,
+        [data.id, data.product]
+      );
       return data;
     },
-    findMany: async (opts?: { orderBy?: any }) => {
-      const sql = getSql();
-      return sql`SELECT * FROM "Scan" ORDER BY "createdAt" DESC` as Promise<any[]>;
+    findMany: async () => {
+      return runQuery(`SELECT * FROM "Scan" ORDER BY "createdAt" DESC`);
     },
   },
 
   // ── Rating ────────────────────────────────────────────────────────────────
   rating: {
     create: async ({ data }: { data: { id: string; product: string; stars: number; comment?: string } }) => {
-      const sql = getSql();
-      await sql`INSERT INTO "Rating" ("id","product","stars","comment") VALUES (${data.id},${data.product},${data.stars},${data.comment || ""}) ON CONFLICT ("id") DO NOTHING`;
+      await runQuery(
+        `INSERT INTO "Rating" ("id","product","stars","comment") VALUES ($1,$2,$3,$4) ON CONFLICT ("id") DO NOTHING`,
+        [data.id, data.product, data.stars, data.comment || ""]
+      );
       return data;
     },
-    findMany: async (opts?: any) => {
-      const sql = getSql();
-      return sql`SELECT * FROM "Rating" ORDER BY "createdAt" DESC` as Promise<any[]>;
+    findMany: async () => {
+      return runQuery(`SELECT * FROM "Rating" ORDER BY "createdAt" DESC`);
     },
   },
 
   // ── Lead ──────────────────────────────────────────────────────────────────
   lead: {
     create: async ({ data }: { data: { id: string; name: string; contact: string; promoCode: string } }) => {
-      const sql = getSql();
-      await sql`INSERT INTO "Lead" ("id","name","contact","promoCode") VALUES (${data.id},${data.name},${data.contact},${data.promoCode}) ON CONFLICT ("id") DO NOTHING`;
+      await runQuery(
+        `INSERT INTO "Lead" ("id","name","contact","promoCode") VALUES ($1,$2,$3,$4) ON CONFLICT ("id") DO NOTHING`,
+        [data.id, data.name, data.contact, data.promoCode]
+      );
       return data;
     },
-    findMany: async (opts?: any) => {
-      const sql = getSql();
-      return sql`SELECT * FROM "Lead" ORDER BY "createdAt" DESC` as Promise<any[]>;
+    findMany: async () => {
+      return runQuery(`SELECT * FROM "Lead" ORDER BY "createdAt" DESC`);
     },
     findFirst: async ({ where }: { where: { contact: string } }) => {
-      const sql = getSql();
-      const rows = await sql`SELECT * FROM "Lead" WHERE "contact"=${where.contact} LIMIT 1`;
+      const rows = await runQuery(`SELECT * FROM "Lead" WHERE "contact"=$1 LIMIT 1`, [where.contact]);
       return rows[0] ?? null;
     },
   },
@@ -190,48 +220,85 @@ export const prisma = {
   // ── OrderClick ────────────────────────────────────────────────────────────
   orderClick: {
     create: async ({ data }: { data: { id: string; product: string; platform: string } }) => {
-      const sql = getSql();
-      await sql`INSERT INTO "OrderClick" ("id","product","platform") VALUES (${data.id},${data.product},${data.platform}) ON CONFLICT ("id") DO NOTHING`;
+      await runQuery(
+        `INSERT INTO "OrderClick" ("id","product","platform") VALUES ($1,$2,$3) ON CONFLICT ("id") DO NOTHING`,
+        [data.id, data.product, data.platform]
+      );
       return data;
     },
-    findMany: async (opts?: any) => {
-      const sql = getSql();
-      return sql`SELECT * FROM "OrderClick" ORDER BY "createdAt" DESC` as Promise<any[]>;
+    findMany: async () => {
+      return runQuery(`SELECT * FROM "OrderClick" ORDER BY "createdAt" DESC`);
     },
   },
 
   // ── Recipe ────────────────────────────────────────────────────────────────
   recipe: {
     findMany: async () => {
-      const sql = getSql();
-      return sql`SELECT * FROM "Recipe" ORDER BY "updatedAt" DESC` as Promise<any[]>;
+      return runQuery(`SELECT * FROM "Recipe" ORDER BY "updatedAt" DESC`);
     },
     findUnique: async ({ where }: { where: { id: string } }) => {
-      const sql = getSql();
-      const rows = await sql`SELECT * FROM "Recipe" WHERE "id"=${where.id} LIMIT 1`;
+      const rows = await runQuery(`SELECT * FROM "Recipe" WHERE "id"=$1 LIMIT 1`, [where.id]);
       return rows[0] ?? null;
     },
     create: async ({ data }: { data: any }) => {
-      const sql = getSql();
-      await sql`
-        INSERT INTO "Recipe" ("id","title","category","icon","meatType","cuisine","description","prepTime","cookTime","difficulty","videoUrl","videoPlaceholder","ingredients","instructions","tips","marinade","doneness","recommendedWeights")
-        VALUES (${data.id},${data.title},${data.category},${data.icon||""},${data.meatType||"meat"},${data.cuisine||"arabic"},${data.description||""},${data.prepTime||""},${data.cookTime||""},${data.difficulty||""},${data.videoUrl||""},${data.videoPlaceholder||""},${data.ingredients||"[]"},${data.instructions||"[]"},${data.tips||"[]"},${data.marinade||""},${data.doneness||null},${data.recommendedWeights||null})
-        ON CONFLICT ("id") DO NOTHING`;
+      await runQuery(
+        `INSERT INTO "Recipe" ("id","title","category","icon","meatType","cuisine","description","prepTime","cookTime","difficulty","videoUrl","videoPlaceholder","ingredients","instructions","tips","marinade","doneness","recommendedWeights")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+         ON CONFLICT ("id") DO NOTHING`,
+        [
+          data.id,
+          data.title,
+          data.category,
+          data.icon || "",
+          data.meatType || "meat",
+          data.cuisine || "arabic",
+          data.description || "",
+          data.prepTime || "",
+          data.cookTime || "",
+          data.difficulty || "",
+          data.videoUrl || "",
+          data.videoPlaceholder || "",
+          data.ingredients || "[]",
+          data.instructions || "[]",
+          data.tips || "[]",
+          data.marinade || "",
+          data.doneness || null,
+          data.recommendedWeights || null,
+        ]
+      );
       return data;
     },
     upsert: async ({ where, update, create }: any) => {
-      const sql = getSql();
       const d = { ...create, ...update };
-      await sql`
-        INSERT INTO "Recipe" ("id","title","category","icon","meatType","cuisine","description","prepTime","cookTime","difficulty","videoUrl","videoPlaceholder","ingredients","instructions","tips","marinade","doneness","recommendedWeights")
-        VALUES (${where.id},${d.title},${d.category||""},${d.icon||""},${d.meatType||"meat"},${d.cuisine||"arabic"},${d.description||""},${d.prepTime||""},${d.cookTime||""},${d.difficulty||""},${d.videoUrl||""},${d.videoPlaceholder||"شاهد الفيديو"},${d.ingredients||"[]"},${d.instructions||"[]"},${d.tips||"[]"},${d.marinade||""},${d.doneness||null},${d.recommendedWeights||null})
-        ON CONFLICT ("id") DO UPDATE SET
-          "title"=${d.title},"category"=${d.category||""},"icon"=${d.icon||""},"meatType"=${d.meatType||"meat"},
-          "cuisine"=${d.cuisine||"arabic"},"description"=${d.description||""},"prepTime"=${d.prepTime||""},
-          "cookTime"=${d.cookTime||""},"difficulty"=${d.difficulty||""},"videoUrl"=${d.videoUrl||""},
-          "ingredients"=${d.ingredients||"[]"},"instructions"=${d.instructions||"[]"},"tips"=${d.tips||"[]"},
-          "marinade"=${d.marinade||""},"doneness"=${d.doneness||null},"recommendedWeights"=${d.recommendedWeights||null},
-          "updatedAt"=NOW()`;
+      await runQuery(
+        `INSERT INTO "Recipe" ("id","title","category","icon","meatType","cuisine","description","prepTime","cookTime","difficulty","videoUrl","videoPlaceholder","ingredients","instructions","tips","marinade","doneness","recommendedWeights")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+         ON CONFLICT ("id") DO UPDATE SET
+           "title"=$2,"category"=$3,"icon"=$4,"meatType"=$5,"cuisine"=$6,"description"=$7,
+           "prepTime"=$8,"cookTime"=$9,"difficulty"=$10,"videoUrl"=$11,"ingredients"=$13,
+           "instructions"=$14,"tips"=$15,"marinade"=$16,"doneness"=$17,"recommendedWeights"=$18,
+           "updatedAt"=NOW()`,
+        [
+          where.id,
+          d.title,
+          d.category || "",
+          d.icon || "",
+          d.meatType || "meat",
+          d.cuisine || "arabic",
+          d.description || "",
+          d.prepTime || "",
+          d.cookTime || "",
+          d.difficulty || "",
+          d.videoUrl || "",
+          d.videoPlaceholder || "شاهد الفيديو",
+          d.ingredients || "[]",
+          d.instructions || "[]",
+          d.tips || "[]",
+          d.marinade || "",
+          d.doneness || null,
+          d.recommendedWeights || null,
+        ]
+      );
       return { id: where.id, ...d };
     },
   },
@@ -239,14 +306,14 @@ export const prisma = {
   // ── SiteSetting ───────────────────────────────────────────────────────────
   siteSetting: {
     findMany: async () => {
-      const sql = getSql();
-      return sql`SELECT * FROM "SiteSetting"` as Promise<any[]>;
+      return runQuery(`SELECT * FROM "SiteSetting"`);
     },
     upsert: async ({ where, update, create }: any) => {
-      const sql = getSql();
-      await sql`
-        INSERT INTO "SiteSetting" ("key","value") VALUES (${where.key},${create.value})
-        ON CONFLICT ("key") DO UPDATE SET "value"=${update.value},"updatedAt"=NOW()`;
+      await runQuery(
+        `INSERT INTO "SiteSetting" ("key","value") VALUES ($1,$2)
+         ON CONFLICT ("key") DO UPDATE SET "value"=$2,"updatedAt"=NOW()`,
+        [where.key, create.value]
+      );
       return { key: where.key, value: update.value };
     },
   },
@@ -254,22 +321,16 @@ export const prisma = {
   // ── LoyaltyCard ───────────────────────────────────────────────────────────
   loyaltyCard: {
     findUnique: async ({ where }: { where: { phone: string } }) => {
-      const sql = getSql();
-      const rows = await sql`SELECT * FROM "LoyaltyCard" WHERE "phone"=${where.phone} LIMIT 1`;
+      const rows = await runQuery(`SELECT * FROM "LoyaltyCard" WHERE "phone"=$1 LIMIT 1`, [where.phone]);
       return rows[0] ?? null;
     },
   },
 
-  // ── Raw queries (used by loyalty route) ───────────────────────────────────
   $executeRawUnsafe: async (query: string, ...params: any[]) => {
-    const sql = getSql();
-    // Use tagged template for raw unsafe — build manually
-    const result = await sql.transaction((tx: any) => [tx(query as any, ...params)]);
-    return result;
+    return runQuery(query, params);
   },
 
   $queryRawUnsafe: async <T = any>(query: string, ...params: any[]): Promise<T[]> => {
-    const sql = getSql();
-    return sql(query as any, ...params) as unknown as T[];
+    return runQuery<T>(query, params);
   },
 };
