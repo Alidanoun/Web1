@@ -1,34 +1,24 @@
 import { NextResponse } from "next/server";
 import { prisma, ensureTablesExist } from "@/lib/db";
-import { recordMemoryClick } from "@/lib/trackingStore";
 
 export async function POST(req: Request) {
   try {
-    await ensureTablesExist();
-
     const { product, platform } = await req.json();
 
     if (!product || !platform) {
       return NextResponse.json({ error: "بيانات ناقصة" }, { status: 400 });
     }
 
-    const memoryClick = recordMemoryClick(String(product), String(platform));
+    const id = `click_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-    try {
-      await prisma.orderClick.create({
-        data: {
-          id: memoryClick.id,
-          product: String(product),
-          platform: String(platform),
-        },
-      });
-    } catch (dbErr) {
-      console.warn("Click save warning:", dbErr);
-    }
+    await ensureTablesExist();
+    await prisma.orderClick.create({
+      data: { id, product: String(product), platform: String(platform) },
+    });
 
-    return NextResponse.json({ success: true, click: memoryClick }, { status: 201 });
+    return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
-    console.error("Error logging click:", error);
+    console.error("Click DB error:", error instanceof Error ? error.message : error);
     return NextResponse.json({ success: true }, { status: 200 });
   }
 }

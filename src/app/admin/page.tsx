@@ -27,6 +27,8 @@ interface StatsData {
   clicks: Record<string, number>;
   recentScans: Scan[];
   recentRatings?: any[];
+  dbConnected: boolean;
+  dbError: string | null;
 }
 
 interface RecipeData {
@@ -62,7 +64,7 @@ interface PackageData {
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<"stats" | "recipes" | "qr" | "settings" | "loyalty">("stats");
-  const [domainHost, setDomainHost] = useState("http://recipes-markzia.ddns.net");
+  const [domainHost, setDomainHost] = useState("");
   const [loyaltyCards, setLoyaltyCards] = useState<any[]>([]);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
   const [stats, setStats] = useState<StatsData | null>(null);
@@ -117,7 +119,7 @@ export default function AdminDashboard() {
         setStats(data);
         setError("");
       } else {
-        setError(data.error || "فشل الاتصال بقاعدة البيانات، يرجى التأكد من DATABASE_URL في Netlify.");
+        setError(data.error || "فشل الاتصال بقاعدة البيانات.");
       }
     } catch (err) {
       console.error("Error fetching stats:", err);
@@ -392,7 +394,38 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {error && <div className="card" style={{ color: "var(--color-danger)", textAlign: "center" }}>{error}</div>}
+      {error && <div className="card" style={{ color: "var(--color-danger)", textAlign: "center", fontWeight: 700 }}>{error}</div>}
+
+      {/* DB Connection Status Banner */}
+      {stats && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.5rem 0.85rem",
+            borderRadius: "8px",
+            marginBottom: "1rem",
+            background: stats.dbConnected ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.12)",
+            border: stats.dbConnected ? "1px solid rgba(16,185,129,0.4)" : "1px solid rgba(239,68,68,0.4)",
+            fontSize: "0.8rem",
+            fontWeight: 700,
+          }}
+        >
+          <span style={{ fontSize: "1rem" }}>{stats.dbConnected ? "🟢" : "🔴"}</span>
+          <span style={{ color: stats.dbConnected ? "var(--color-success)" : "#f87171" }}>
+            {stats.dbConnected
+              ? "قاعدة البيانات متصلة — البيانات حقيقية من الداتابيز"
+              : `قاعدة البيانات غير متصلة — تحقق من DATABASE_URL في Cloudflare${stats.dbError ? ": " + stats.dbError.substring(0, 80) : ""}`}
+          </span>
+          <button
+            onClick={fetchStats}
+            style={{ marginRight: "auto", background: "transparent", border: "1px solid rgba(255,255,255,0.2)", color: "var(--color-text-muted)", borderRadius: "6px", padding: "0.2rem 0.55rem", fontSize: "0.72rem", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            🔄 تحديث
+          </button>
+        </div>
+      )}
 
       {/* TAB 1: ANALYTICS DASHBOARD */}
       {activeTab === "stats" && stats && (
