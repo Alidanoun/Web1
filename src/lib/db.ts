@@ -101,7 +101,7 @@ export async function ensureTablesExist() {
       await prisma.$executeRawUnsafe(`ALTER TABLE "Recipe" ADD COLUMN IF NOT EXISTS "meatType" TEXT DEFAULT 'meat';`);
       await prisma.$executeRawUnsafe(`ALTER TABLE "Recipe" ADD COLUMN IF NOT EXISTS "icon" TEXT DEFAULT '';`);
     } catch (e) {
-      // Column already exists or handled by SQLite/PG
+      // Column already exists
     }
 
     await prisma.$executeRawUnsafe(`
@@ -122,6 +122,22 @@ export async function ensureTablesExist() {
       CREATE TABLE IF NOT EXISTS "SiteSetting" (
         "key" TEXT PRIMARY KEY,
         "value" TEXT NOT NULL,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // LoyaltyCard — stores points per phone number
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "LoyaltyCard" (
+        "id" TEXT PRIMARY KEY,
+        "phone" TEXT NOT NULL UNIQUE,
+        "name" TEXT NOT NULL DEFAULT '',
+        "points" INTEGER NOT NULL DEFAULT 0,
+        "totalEarned" INTEGER NOT NULL DEFAULT 0,
+        "rewardCode" TEXT NOT NULL DEFAULT '',
+        "rewardUsed" BOOLEAN NOT NULL DEFAULT false,
+        "lastScanAt" TIMESTAMP(3),
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);

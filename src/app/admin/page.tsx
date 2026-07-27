@@ -61,8 +61,10 @@ interface PackageData {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"stats" | "recipes" | "qr" | "settings">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "recipes" | "qr" | "settings" | "loyalty">("stats");
   const [domainHost, setDomainHost] = useState("http://recipes-markzia.ddns.net");
+  const [loyaltyCards, setLoyaltyCards] = useState<any[]>([]);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [recipes, setRecipes] = useState<Record<string, RecipeData>>({});
   const [loading, setLoading] = useState(true);
@@ -155,6 +157,19 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchLoyaltyCards = async () => {
+    setLoyaltyLoading(true);
+    try {
+      const res = await fetch("/api/loyalty/all", { credentials: "same-origin" });
+      const data = await res.json();
+      if (data.success) setLoyaltyCards(data.cards || []);
+    } catch (err) {
+      console.error("Failed to fetch loyalty cards:", err);
+    } finally {
+      setLoyaltyLoading(false);
+    }
+  };
+
   const handleSaveSettings = async () => {
     setSavingSettings(true);
     setSettingsSuccess(false);
@@ -191,6 +206,7 @@ export default function AdminDashboard() {
       setDomainHost(window.location.origin);
     }
     Promise.all([fetchStats(), fetchRecipes(), fetchSettings()]).then(() => setLoading(false));
+    fetchLoyaltyCards();
   }, []);
 
   const handleSeed = async () => {
@@ -366,6 +382,13 @@ export default function AdminDashboard() {
           style={{ fontSize: "0.95rem", padding: "0.6rem 1.25rem" }}
         >
           ⚙️ إعدادات أسماء الموقع والأقسام
+        </button>
+        <button
+          className={`doneness-tab ${activeTab === "loyalty" ? "active" : ""}`}
+          onClick={() => { setActiveTab("loyalty"); fetchLoyaltyCards(); }}
+          style={{ fontSize: "0.95rem", padding: "0.6rem 1.25rem" }}
+        >
+          🦁 بطاقات الولاء
         </button>
       </div>
 
@@ -1521,6 +1544,139 @@ export default function AdminDashboard() {
               {savingSettings ? "جاري الحفظ..." : "💾 حفظ التغييرات"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════ */}
+      {/* TAB 5: LOYALTY CARDS DASHBOARD                */}
+      {/* ══════════════════════════════════════════════ */}
+      {activeTab === "loyalty" && (
+        <div className="animate-fade-in">
+          {/* Header */}
+          <div className="card card-gold-border" style={{ marginBottom: "1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
+            <div>
+              <h3 style={{ fontWeight: 800, fontSize: "1.1rem", marginBottom: "0.2rem" }}>🦁 بطاقات الولاء الرقمية</h3>
+              <p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)" }}>
+                كل عميل سجّل رقمه وجمع نقاطاً يظهر هنا. مرتبون من الأعلى نقاطاً.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+              <div className="card-gold-border" style={{ borderRadius: "8px", padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 700, textAlign: "center" }}>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.7rem" }}>إجمالي البطاقات</div>
+                <div style={{ color: "white", fontSize: "1.1rem" }}>{loyaltyCards.length}</div>
+              </div>
+              <div className="card-gold-border" style={{ borderRadius: "8px", padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 700, textAlign: "center" }}>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.7rem" }}>مستحقون للخصم</div>
+                <div style={{ color: "var(--color-success)", fontSize: "1.1rem" }}>
+                  {loyaltyCards.filter(c => c.points >= 10 && !c.rewardUsed).length}
+                </div>
+              </div>
+              <button
+                onClick={fetchLoyaltyCards}
+                className="btn-gold"
+                style={{ fontSize: "0.8rem", padding: "0.5rem 1rem", width: "auto", animation: "none" }}
+              >
+                {loyaltyLoading ? "⏳ تحديث..." : "🔄 تحديث"}
+              </button>
+            </div>
+          </div>
+
+          {/* Cards Table */}
+          {loyaltyLoading && loyaltyCards.length === 0 ? (
+            <div className="card" style={{ textAlign: "center", padding: "2rem", color: "var(--color-text-muted)" }}>
+              ⏳ جاري تحميل بطاقات الولاء...
+            </div>
+          ) : loyaltyCards.length === 0 ? (
+            <div className="card" style={{ textAlign: "center", padding: "2rem" }}>
+              <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🦁</div>
+              <p style={{ color: "var(--color-text-muted)", fontSize: "0.85rem" }}>
+                لا يوجد عملاء مسجلون في برنامج الولاء بعد. عندما يمسح العملاء رمز QR الولاء ويدخلون أرقامهم، ستظهر بطاقاتهم هنا.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+              {loyaltyCards.map((card, idx) => {
+                const pct = Math.min((card.points / 10) * 100, 100);
+                const isMaxed = card.points >= 10 && !card.rewardUsed;
+                return (
+                  <div
+                    key={card.id || idx}
+                    className="card"
+                    style={{
+                      border: isMaxed
+                        ? "1px solid var(--color-success)"
+                        : "1px solid rgba(255,255,255,0.05)",
+                      padding: "1rem 1.25rem",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                      {/* Customer Info */}
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                          <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "white" }}>
+                            {card.name || "عميل مجهول"}
+                          </span>
+                          {isMaxed && (
+                            <span style={{ background: "var(--color-success)", color: "white", fontSize: "0.65rem", fontWeight: 700, padding: "0.2rem 0.5rem", borderRadius: "4px" }}>
+                              🏆 مستحق للخصم
+                            </span>
+                          )}
+                          {card.rewardUsed && (
+                            <span style={{ background: "rgba(255,255,255,0.1)", color: "var(--color-text-muted)", fontSize: "0.65rem", fontWeight: 700, padding: "0.2rem 0.5rem", borderRadius: "4px" }}>
+                              ✅ استخدم الخصم
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", marginTop: "0.2rem", direction: "ltr" }}>
+                          📱 {card.phone}
+                        </div>
+                        {card.rewardCode && (
+                          <div style={{ fontSize: "0.75rem", color: isMaxed ? "var(--color-success)" : "var(--color-text-muted)", marginTop: "0.2rem", fontFamily: "monospace", fontWeight: 700 }}>
+                            🎟️ {card.rewardCode}
+                          </div>
+                        )}
+                      </div>
+                      {/* Points Badge */}
+                      <div style={{ textAlign: "center", minWidth: "60px" }}>
+                        <div style={{ fontSize: "1.6rem", fontWeight: 900, color: isMaxed ? "var(--color-success)" : "var(--color-brand-gold)", lineHeight: 1 }}>
+                          {card.points}
+                        </div>
+                        <div style={{ fontSize: "0.65rem", color: "var(--color-text-muted)" }}>/ 10 نقاط</div>
+                        <div style={{ fontSize: "0.65rem", color: "var(--color-text-muted)", marginTop: "0.15rem" }}>
+                          إجمالي: {card.totalEarned}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress dots + bar */}
+                    <div>
+                      <div style={{ display: "flex", gap: "0.25rem", marginBottom: "0.4rem" }}>
+                        {Array.from({ length: 10 }).map((_, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              flex: 1,
+                              height: "8px",
+                              borderRadius: "4px",
+                              background: i < card.points
+                                ? "linear-gradient(90deg, var(--color-brand-gold), #ffc107)"
+                                : "rgba(255,255,255,0.06)",
+                              border: i < card.points ? "none" : "1px solid rgba(255,255,255,0.08)",
+                              transition: "all 0.3s",
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.7rem", color: "var(--color-text-muted)" }}>
+                        <span>آخر مسح: {card.lastScanAt ? new Date(card.lastScanAt).toLocaleDateString("ar") : "لا يوجد"}</span>
+                        <span>انضم: {card.createdAt ? new Date(card.createdAt).toLocaleDateString("ar") : "—"}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

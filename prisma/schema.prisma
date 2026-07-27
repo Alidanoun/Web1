@@ -77,3 +77,16 @@ model SiteSetting {
   updatedAt DateTime @updatedAt
 }
 
+model LoyaltyCard {
+  id           String   @id @default(uuid())
+  phone        String   @unique  // رقم الهاتف (المعرّف الأساسي للعميل)
+  name         String   @default("")
+  points       Int      @default(0) // رصيد النقاط الحالي
+  totalEarned  Int      @default(0) // إجمالي النقاط المكتسبة على مر الوقت
+  rewardCode   String   @default("") // كود الخصم الفريد عند بلوغ 10 نقاط
+  rewardUsed   Boolean  @default(false) // هل تم استخدام كود الخصم؟
+  lastScanAt   DateTime? // آخر وقت مسح لمنع التكرار
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
