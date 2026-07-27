@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "almarkazia",
+  "compatibility_date": "2026-07-25",
+  "pages_build_output_dir": ".vercel/output/static",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "DATABASE_URL": "postgresql://postgres:Almarkazia123%40@db.zucnkspwxotxptpywbof.supabase.co:5432/postgres"
+  }
+}

@@ -7,7 +7,7 @@ import { neon, neonConfig, Pool } from "@neondatabase/serverless";
 neonConfig.fetchConnectionCache = true;
 
 function getDbUrl(): string {
-  let url = process.env.DATABASE_URL || "";
+  let url = process.env.DATABASE_URL || "postgresql://postgres:Almarkazia123%40@db.zucnkspwxotxptpywbof.supabase.co:5432/postgres";
   if (url && (url.startsWith("postgres://") || url.startsWith("postgresql://"))) {
     if (!url.includes("sslmode=")) {
       url += url.includes("?") ? "&sslmode=require" : "?sslmode=require";
