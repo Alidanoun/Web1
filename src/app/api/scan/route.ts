@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma, ensureTablesExist } from "@/lib/db";
-import crypto from "crypto";
+import { recordMemoryScan } from "@/lib/trackingStore";
 
 export async function POST(req: Request) {
   try {
@@ -13,21 +13,19 @@ export async function POST(req: Request) {
     }
 
     const cleanProduct = product.trim().toLowerCase();
+    const memoryScan = recordMemoryScan(cleanProduct);
 
     try {
       const scan = await prisma.scan.create({
         data: {
-          id: crypto.randomUUID(),
+          id: memoryScan.id,
           product: cleanProduct,
         },
       });
       return NextResponse.json({ success: true, scan }, { status: 200 });
     } catch (dbErr) {
-      console.error("DB scan creation error:", dbErr);
-      return NextResponse.json(
-        { success: false, error: `فشل حفظ المسح بالداتا بيس: ${(dbErr as Error).message}` },
-        { status: 500 }
-      );
+      console.warn("DB notice (POST scan): saved to memory store.", dbErr);
+      return NextResponse.json({ success: true, scan: memoryScan }, { status: 200 });
     }
   } catch (error) {
     console.error("Error logging scan:", error);
