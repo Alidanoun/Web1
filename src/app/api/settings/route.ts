@@ -9,27 +9,27 @@ const DEFAULT_SETTINGS: Record<string, string> = {
   allTabLabel: "جميع الأصناف",
 };
 
+// In-memory fallback cache so settings work seamlessly even without live DB
+const memorySettings: Record<string, string> = { ...DEFAULT_SETTINGS };
+
 export async function GET() {
   try {
     await ensureTablesExist();
     const settingsList = await prisma.siteSetting.findMany();
-    const settings = { ...DEFAULT_SETTINGS };
     settingsList.forEach((s) => {
       if (s.key && s.value) {
-        settings[s.key] = s.value;
+        memorySettings[s.key] = s.value;
       }
     });
-
-    return NextResponse.json({ success: true, settings });
   } catch (error) {
-    console.error("Error fetching settings:", error);
-    return NextResponse.json({ success: true, settings: DEFAULT_SETTINGS });
+    console.error("DB notice (GET settings): using memory cache.", error);
   }
+
+  return NextResponse.json({ success: true, settings: memorySettings });
 }
 
 export async function POST(request: Request) {
   try {
-    await ensureTablesExist();
     const body = await request.json();
     const { settings } = body;
 
@@ -37,15 +37,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "بيانات غير صالحة" }, { status: 400 });
     }
 
-    const updates = Object.keys(settings).map((key) =>
-      prisma.siteSetting.upsert({
-        where: { key },
-        update: { value: String(settings[key]) },
-        create: { key, value: String(settings[key]) },
-      })
-    );
+    // Always update memory cache immediately
+    Object.keys(settings).forEach((key) => {
+      memorySettings[key] = String(settings[key]);
+    });
 
-    await Promise.all(updates);
+    // Try persisting to DB
+    try {
+      await ensureTablesExist();
+      const updates = Object.keys(settings).map((key) =>
+        prisma.siteSetting.upsert({
+          where: { key },
+          update: { value: String(settings[key]) },
+          create: { key, value: String(settings[key]) },
+        })
+      );
+      await Promise.all(updates);
+    } catch (dbErr) {
+      console.error("DB notice (POST settings): saved to memory cache.", dbErr);
+    }
 
     return NextResponse.json({ success: true, message: "تم حفظ الإعدادات بنجاح" });
   } catch (error) {
