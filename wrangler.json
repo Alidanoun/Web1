@@ -1,6 +1,9 @@
 {
   "name": "almarkazia",
+  "main": ".open-next/worker.js",
   "compatibility_date": "2026-07-25",
-  "pages_build_output_dir": ".open-next/assets",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets"
+  }
 }
