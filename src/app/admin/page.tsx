@@ -413,10 +413,10 @@ export default function AdminDashboard() {
           }}
         >
           <span style={{ fontSize: "1rem" }}>{stats.dbConnected ? "🟢" : "🔴"}</span>
-          <span style={{ color: stats.dbConnected ? "var(--color-success)" : "#f87171" }}>
+          <span style={{ color: stats.dbConnected ? "var(--color-success)" : "#f87171", wordBreak: "break-word" }}>
             {stats.dbConnected
               ? "قاعدة البيانات متصلة — البيانات حقيقية من الداتابيز"
-              : `قاعدة البيانات غير متصلة — تحقق من DATABASE_URL في Cloudflare${stats.dbError ? ": " + stats.dbError.substring(0, 80) : ""}`}
+              : `قاعدة البيانات غير متصلة: ${stats.dbError || "تحقق من DATABASE_URL في Cloudflare"}`}
           </span>
           <button
             onClick={fetchStats}

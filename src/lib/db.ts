@@ -26,7 +26,10 @@ let _neonSql: ReturnType<typeof neon> | null = null;
 export async function runQuery<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
   const url = getDbUrl();
   if (!url) {
-    throw new Error("DATABASE_URL is not set in Cloudflare Variables.");
+    throw new Error("DATABASE_URL غير موجود في إعدادات Cloudflare. يرجى إضافته في Settings -> Variables.");
+  }
+  if (url.includes("[YOUR-PASSWORD]") || url.includes("YOUR_ACTUAL_PASSWORD") || url.includes("YOUR_PASSWORD")) {
+    throw new Error("يرجى استبدال [YOUR-PASSWORD] بكلمة السر الحقيقية الخاصة بالداتابيز في إعدادات Cloudflare.");
   }
 
   // If Neon host
