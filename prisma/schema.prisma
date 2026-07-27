@@ -41,6 +41,7 @@ model Recipe {
   id               String   @id // e.g. 'burger', 'steak', 'kebab', 'ribs', 'tenderloin', 'kofta', 'awsal', 'smash'
   title            String
   category         String
+  icon             String   @default("") // Custom emoji like 🥩, 🍗, 🍔, 🍢, 🍖
   meatType         String   @default("meat") // 'meat' or 'chicken'
   cuisine          String   @default("arabic") // 'arabic' or 'international'
   description      String

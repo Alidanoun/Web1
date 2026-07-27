@@ -47,17 +47,21 @@ export default function HomePage() {
         if (data.success && data.recipes) {
           const formatted: DisplayRecipe[] = Object.keys(data.recipes).map((key) => {
             const r = data.recipes[key];
-            let icon = "🥩";
-            if (r.meatType === "chicken") {
-              icon = "🍗";
-            } else if (r.category?.includes("برغر") || r.id?.includes("burger")) {
-              icon = "🍔";
-            } else if (r.category?.includes("كباب") || r.id?.includes("kebab")) {
-              icon = "🔥";
-            } else if (r.category?.includes("ريش") || r.id?.includes("ribs")) {
-              icon = "🍖";
-            } else if (r.category?.includes("كفتة") || r.id?.includes("kofta")) {
-              icon = "🥘";
+            let icon = r.icon || "";
+            if (!icon) {
+              if (r.meatType === "chicken") {
+                icon = "🍗";
+              } else if (r.category?.includes("برغر") || r.id?.includes("burger")) {
+                icon = "🍔";
+              } else if (r.category?.includes("كباب") || r.id?.includes("kebab")) {
+                icon = "🔥";
+              } else if (r.category?.includes("ريش") || r.id?.includes("ribs")) {
+                icon = "🍖";
+              } else if (r.category?.includes("كفتة") || r.id?.includes("kofta")) {
+                icon = "🥘";
+              } else {
+                icon = "🥩";
+              }
             }
 
             return {

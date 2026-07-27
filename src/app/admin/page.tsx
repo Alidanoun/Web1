@@ -40,6 +40,7 @@ interface RecipeData {
   difficulty: string;
   videoPlaceholder: string;
   videoUrl?: string;
+  icon?: string;
   ingredients: any;
   instructions: string[];
   tips: string[];
@@ -100,6 +101,7 @@ export default function AdminDashboard() {
   const [formCuisine, setFormCuisine] = useState("arabic");
   const [formMeatType, setFormMeatType] = useState<"meat" | "chicken">("meat");
   const [formCategory, setFormCategory] = useState("ستيك");
+  const [formIcon, setFormIcon] = useState("");
   const [formIngredients, setFormIngredients] = useState("");
   const [formInstructions, setFormInstructions] = useState("");
   const [formTips, setFormTips] = useState("");
@@ -220,6 +222,7 @@ export default function AdminDashboard() {
     setFormCook(recipe.cookTime);
     setFormVideoUrl(recipe.videoUrl || "");
     setFormCuisine(recipe.cuisine || "arabic");
+    setFormIcon(recipe.icon || "");
 
     if (Array.isArray(recipe.ingredients)) {
       setFormIngredients(recipe.ingredients.join("\n"));
@@ -274,6 +277,7 @@ export default function AdminDashboard() {
         id: formId ? formId.trim().toLowerCase().replace(/[^a-z0-9-_]/g, "") : ("recipe_" + Date.now()),
         title: formTitle,
         category: formCategory || "عام",
+        icon: formIcon,
         meatType: formMeatType || "meat",
         description: formDesc,
         prepTime: formPrep,
@@ -1259,6 +1263,42 @@ export default function AdminDashboard() {
                     placeholder="مثال: شيش طاووق، ستيك، برغر..."
                     required
                   />
+                </div>
+              </div>
+
+              {/* Custom Emoji / Icon Input */}
+              <div className="form-group">
+                <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
+                  🎨 إيموجي / أيقونة الوصفة (اختر أو اكتب أي إيموجي):
+                </label>
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="مثال: 🥩 أو 🍗 أو 🍔 أو 🍢"
+                    value={formIcon}
+                    onChange={(e) => setFormIcon(e.target.value)}
+                    style={{ width: "120px", fontSize: "1.2rem", textAlign: "center" }}
+                  />
+                  <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                    {["🥩", "🍗", "🍔", "🔥", "🍖", "🥘", "🍢", "🌭", "🌮", "👑", "✨"].map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setFormIcon(emoji)}
+                        style={{
+                          padding: "0.35rem 0.6rem",
+                          borderRadius: "6px",
+                          border: formIcon === emoji ? "2px solid var(--color-brand-gold)" : "1px solid var(--color-border)",
+                          background: formIcon === emoji ? "rgba(234, 179, 8, 0.2)" : "#27272a",
+                          cursor: "pointer",
+                          fontSize: "1.1rem",
+                        }}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
               {/* Video URL Input */}

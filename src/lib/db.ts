@@ -99,6 +99,7 @@ export async function ensureTablesExist() {
 
     try {
       await prisma.$executeRawUnsafe(`ALTER TABLE "Recipe" ADD COLUMN IF NOT EXISTS "meatType" TEXT DEFAULT 'meat';`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Recipe" ADD COLUMN IF NOT EXISTS "icon" TEXT DEFAULT '';`);
     } catch (e) {
       // Column already exists or handled by SQLite/PG
     }
