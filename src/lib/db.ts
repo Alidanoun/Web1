@@ -79,7 +79,7 @@ export function formatDbError(err: any): string {
 }
 
 function getDbUrl(): string {
-  let url = process.env.DATABASE_URL || "postgresql://postgres.zucnkspwxotxptpywbof:Almarkazia123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres";
+  let url = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_Zh4MX1Swyoxb@ep-weathered-forest-ax9ru7rm-pooler.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require";
   if (url.includes("@@")) {
     url = url.replace("@@", "%40@");
   }
