@@ -31,6 +31,12 @@ export const fallbackStore = {
 export function formatDbError(err: any): string {
   if (!err) return "خطأ غير معروف في الاتصال بقاعدة البيانات";
 
+  const str = String(err?.message || err);
+
+  if (str.includes("CONNECT_TIMEOUT") || str.includes("ETIMEDOUT") || str.includes("6543")) {
+    return "مهلة الاتصال بالداتابيز انتهت (Port 6543 Timeout). يُفضل استخدام رابط Neon السحابي (Port 443) للسرعة المباشرة.";
+  }
+
   if (typeof err === "string") {
     if (err.includes("ErrorEvent") || err === "[object ErrorEvent]") {
       return "فشل اتصال قاعدة البيانات عبر الشبكة. يرجى التأكد من تشغيل الخادم وصحة إعدادات الداتابيز.";
@@ -67,7 +73,6 @@ export function formatDbError(err: any): string {
     } catch {}
   }
 
-  const str = String(err);
   return str.includes("ErrorEvent") || str === "[object ErrorEvent]"
     ? "فشل الاتصال بقاعدة البيانات عبر الشبكة."
     : str;
@@ -91,9 +96,9 @@ function getSqlDriver() {
   const url = getDbUrl();
   _sql = postgres(url, {
     ssl: url.includes("sslmode=require") || url.includes("supabase") || url.includes("neon") ? "require" : false,
-    connect_timeout: 5,
-    max: 10,
-    idle_timeout: 20,
+    connect_timeout: 3,
+    max: 5,
+    idle_timeout: 10,
   });
   return _sql;
 }

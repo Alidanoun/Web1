@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma, ensureTablesExist, formatDbError, runQuery } from "@/lib/db";
+import { prisma, ensureTablesExist, formatDbError, runQuery, fallbackStore } from "@/lib/db";
 
 export async function GET() {
   let dbConnected = false;
@@ -21,11 +21,11 @@ export async function GET() {
   } catch (error) {
     dbError = formatDbError(error);
     console.error("Stats DB notice:", dbError);
-    // Still pull from memory fallback store so UI displays statistics cleanly
-    dbScans   = await prisma.scan.findMany();
-    dbRatings = await prisma.rating.findMany();
-    dbLeads   = await prisma.lead.findMany();
-    dbClicks  = await prisma.orderClick.findMany();
+    // Instant fallback from memory store
+    dbScans   = fallbackStore.scans;
+    dbRatings = fallbackStore.ratings;
+    dbLeads   = fallbackStore.leads;
+    dbClicks  = fallbackStore.orderClicks;
   }
 
   // Scans per product
