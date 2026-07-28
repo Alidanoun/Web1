@@ -95,19 +95,15 @@ function getDbUrl(): string {
 
 /**
  * Universal Query Execution via HTTP Fetch Driver
- * 100% compatible with Cloudflare Workers HTTP port 443.
+ * 100% compatible with Cloudflare Workers & Neon v1.1.0+ HTTP port 443.
  */
 export async function runQuery<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
   const url = getDbUrl();
 
   try {
     if (!_neonSql) _neonSql = neon(url);
-    if (params.length === 0) {
-      return (await _neonSql(queryText as any)) as unknown as T[];
-    } else {
-      const res = await _neonSql.transaction((tx: any) => [tx(queryText as any, ...params)]);
-      return (res[0] || []) as unknown as T[];
-    }
+    // @neondatabase/serverless v1.1.0+ requires .query() for conventional dynamic SQL strings
+    return (await (_neonSql as any).query(queryText, params)) as unknown as T[];
   } catch (err) {
     throw new Error(formatDbError(err));
   }
