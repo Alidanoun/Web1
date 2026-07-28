@@ -1,13 +1,10 @@
 /**
  * db.ts — Universal Serverless SQL Client for Cloudflare Workers & Next.js
- * Supports Supabase (via HTTP REST API / @supabase/supabase-js), Neon (via @neondatabase/serverless),
- * and In-Memory Fallback for 100% cloud & local compatibility.
+ * Supports Supabase (Transaction Pooler & Direct), Neon, and PostgreSQL natively using postgres.js.
  */
-import { neon } from "@neondatabase/serverless";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import postgres from "postgres";
 
-let _neonSql: ReturnType<typeof neon> | null = null;
-let _supabaseClient: SupabaseClient | null = null;
+let _sql: ReturnType<typeof postgres> | null = null;
 
 // In-Memory Storage Fallback (used gracefully when DB is unreachable or unconfigured)
 export const fallbackStore = {
@@ -77,7 +74,7 @@ export function formatDbError(err: any): string {
 }
 
 function getDbUrl(): string {
-  let url = process.env.DATABASE_URL || "postgresql://postgres:Almarkazia123%40@db.zucnkspwxotxptpywbof.supabase.co:5432/postgres";
+  let url = process.env.DATABASE_URL || "postgresql://postgres.zucnkspwxotxptpywbof:Almarkazia123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres";
   if (url.includes("@@")) {
     url = url.replace("@@", "%40@");
   }
@@ -89,44 +86,21 @@ function getDbUrl(): string {
   return url;
 }
 
-/**
- * Gets or initializes a Supabase HTTP Client if configured or detectable from env / DATABASE_URL.
- */
-export function getSupabaseClient(): SupabaseClient | null {
-  if (_supabaseClient) return _supabaseClient;
-
-  let supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  let supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
-
-  if (!supabaseUrl) {
-    const dbUrl = getDbUrl();
-    const match = dbUrl.match(/postgres\.([a-z0-9]+):/i) || dbUrl.match(/db\.([a-z0-9]+)\.supabase/i);
-    if (match && match[1]) {
-      supabaseUrl = `https://${match[1]}.supabase.co`;
-    }
-  }
-
-  // Fallback public anon key if user hasn't provided a custom key yet
-  if (!supabaseKey) {
-    supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Y25rc3d4b3R4cHRweXdib2YiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY4MDAwMDAwMCwiZXhwIjoyMDAwMDAwMDAwfQ.placeholder";
-  }
-
-  if (supabaseUrl && supabaseKey) {
-    try {
-      _supabaseClient = createClient(supabaseUrl, supabaseKey, {
-        auth: { persistSession: false, autoRefreshToken: false },
-      });
-      return _supabaseClient;
-    } catch (e) {
-      console.warn("Could not init Supabase client:", e);
-    }
-  }
-
-  return null;
+function getSqlDriver() {
+  if (_sql) return _sql;
+  const url = getDbUrl();
+  _sql = postgres(url, {
+    ssl: url.includes("sslmode=require") || url.includes("supabase") || url.includes("neon") ? "require" : false,
+    connect_timeout: 5,
+    max: 10,
+    idle_timeout: 20,
+  });
+  return _sql;
 }
 
 /**
- * Universal Query Execution via HTTP Fetch Driver
+ * Universal Query Execution using postgres.js
+ * 100% compatible with Supabase (Pooler & Direct), Neon, and PostgreSQL.
  */
 export async function runQuery<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
   const url = getDbUrl();
@@ -138,12 +112,9 @@ export async function runQuery<T = any>(queryText: string, params: any[] = []): 
   }
 
   try {
-    if (!_neonSql) _neonSql = neon(url);
-    if (params.length === 0) {
-      return (await _neonSql(queryText as any)) as unknown as T[];
-    } else {
-      return (await (_neonSql as any).query(queryText, params)) as unknown as T[];
-    }
+    const sql = getSqlDriver();
+    const rows = await sql.unsafe(queryText, params);
+    return rows as unknown as T[];
   } catch (err) {
     throw new Error(formatDbError(err));
   }

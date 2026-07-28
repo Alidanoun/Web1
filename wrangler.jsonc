@@ -5,6 +5,6 @@
   "pages_build_output_dir": ".vercel/output/static",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
-    "DATABASE_URL": "postgresql://postgres:Almarkazia123%40@db.zucnkspwxotxptpywbof.supabase.co:5432/postgres"
+    "DATABASE_URL": "postgresql://postgres.zucnkspwxotxptpywbof:Almarkazia123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres"
   }
 }
