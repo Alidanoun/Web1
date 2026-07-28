@@ -1,11 +1,9 @@
 /**
  * db.ts — Universal Serverless SQL Client for Cloudflare Workers & Next.js
- * Supports Supabase, Neon, and PostgreSQL with robust error formatting & fallback.
+ * Uses pure HTTP fetch (@neondatabase/serverless) for 100% Cloudflare Workers compatibility.
  */
 import { neon } from "@neondatabase/serverless";
-import { Pool as PgPool } from "pg";
 
-let _pgPool: PgPool | null = null;
 let _neonSql: ReturnType<typeof neon> | null = null;
 
 // In-Memory Storage Fallback (used gracefully when DB is unreachable or unconfigured)
@@ -35,7 +33,7 @@ export function formatDbError(err: any): string {
 
   if (typeof err === "string") {
     if (err.includes("ErrorEvent") || err === "[object ErrorEvent]") {
-      return "فشل اتصال قاعدة البيانات عبر الشبكة (WebSocket / TCP Network Error). يرجى التأكد من تشغيل الخادم وصحة DATABASE_URL.";
+      return "فشل اتصال قاعدة البيانات عبر الشبكة. يرجى التأكد من تشغيل الخادم وصحة DATABASE_URL في Cloudflare.";
     }
     return err;
   }
@@ -52,7 +50,7 @@ export function formatDbError(err: any): string {
       return `تعذر العثور على عنوان خادم قاعدة البيانات (${host}). يرجى التحقق من صحة DATABASE_URL في إعدادات البيئة.`;
     }
     if ((err as any).code === "ECONNREFUSED") {
-      return "تم رفض الاتصال بخادم قاعدة البيانات (Connection Refused). يرجى التأكد من تشغيل خادم PostgreSQL.";
+      return "تم رفض الاتصال بخادم قاعدة البيانات (Connection Refused).";
     }
     if ((err as any).code === "28P01") {
       return "اسم المستخدم أو كلمة السر الخاصة بقاعدة البيانات غير صحيحة (Invalid Database Credentials).";
@@ -90,8 +88,8 @@ function getDbUrl(): string {
 }
 
 /**
- * Universal Query Execution
- * Automatically routes to Neon HTTP for neon.tech, or node-postgres Pool for Supabase / PostgreSQL.
+ * Universal Query Execution via HTTP Fetch Driver
+ * 100% compatible with Cloudflare Workers / Edge bundling.
  */
 export async function runQuery<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
   const url = getDbUrl();
@@ -102,36 +100,14 @@ export async function runQuery<T = any>(queryText: string, params: any[] = []): 
     throw new Error("يرجى استبدال كلمة السر المؤقتة بكلمة السر الحقيقية الخاصة بالداتابيز في إعدادات البيئة.");
   }
 
-  // Route to Neon HTTP driver for Neon hosts
-  if (url.includes("neon.tech")) {
-    try {
-      if (!_neonSql) _neonSql = neon(url);
-      if (params.length === 0) {
-        return (await _neonSql(queryText as any)) as unknown as T[];
-      } else {
-        const res = await _neonSql.transaction((tx: any) => [tx(queryText as any, ...params)]);
-        return (res[0] || []) as unknown as T[];
-      }
-    } catch (err) {
-      throw new Error(formatDbError(err));
-    }
-  }
-
-  // Route to node-postgres Pool for Supabase & standard PostgreSQL
-  if (!_pgPool) {
-    _pgPool = new PgPool({
-      connectionString: url,
-      connectionTimeoutMillis: 5000,
-      ssl: url.includes("sslmode=require") || url.includes("supabase.co") ? { rejectUnauthorized: false } : false,
-    });
-    _pgPool.on("error", (err) => {
-      console.error("PgPool background error:", formatDbError(err));
-    });
-  }
-
   try {
-    const result = await _pgPool.query(queryText, params);
-    return result.rows as unknown as T[];
+    if (!_neonSql) _neonSql = neon(url);
+    if (params.length === 0) {
+      return (await _neonSql(queryText as any)) as unknown as T[];
+    } else {
+      const res = await _neonSql.transaction((tx: any) => [tx(queryText as any, ...params)]);
+      return (res[0] || []) as unknown as T[];
+    }
   } catch (err) {
     throw new Error(formatDbError(err));
   }
