@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma, ensureTablesExist } from "@/lib/db";
+import { prisma, ensureTablesExist, formatDbError, runQuery } from "@/lib/db";
 
 export async function GET() {
   let dbConnected = false;
@@ -10,15 +10,22 @@ export async function GET() {
   let dbError = "";
 
   try {
+    // 1. Verify actual live DB connectivity with simple ping query
+    await runQuery("SELECT 1");
     await ensureTablesExist();
-    dbScans   = await prisma.scan.findMany({ orderBy: { createdAt: "desc" } });
-    dbRatings = await prisma.rating.findMany({ orderBy: { createdAt: "desc" } });
-    dbLeads   = await prisma.lead.findMany({ orderBy: { createdAt: "desc" } });
-    dbClicks  = await prisma.orderClick.findMany({ orderBy: { createdAt: "desc" } });
+    dbScans   = await prisma.scan.findMany();
+    dbRatings = await prisma.rating.findMany();
+    dbLeads   = await prisma.lead.findMany();
+    dbClicks  = await prisma.orderClick.findMany();
     dbConnected = true;
   } catch (error) {
-    dbError = error instanceof Error ? error.message : String(error);
-    console.error("Stats DB error:", dbError);
+    dbError = formatDbError(error);
+    console.error("Stats DB notice:", dbError);
+    // Still pull from memory fallback store so UI displays statistics cleanly
+    dbScans   = await prisma.scan.findMany();
+    dbRatings = await prisma.rating.findMany();
+    dbLeads   = await prisma.lead.findMany();
+    dbClicks  = await prisma.orderClick.findMany();
   }
 
   // Scans per product

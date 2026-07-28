@@ -1,13 +1,86 @@
 /**
- * db.ts — Universal Serverless SQL Client for Cloudflare Workers
- * Supports Supabase (WebSocket Pool) and Neon (HTTP / Pool).
+ * db.ts — Universal Serverless SQL Client for Cloudflare Workers & Next.js
+ * Supports Supabase, Neon, and PostgreSQL with robust error formatting & fallback.
  */
-import { neon, neonConfig, Pool } from "@neondatabase/serverless";
+import { neon } from "@neondatabase/serverless";
+import { Pool as PgPool } from "pg";
 
-neonConfig.fetchConnectionCache = true;
+let _pgPool: PgPool | null = null;
+let _neonSql: ReturnType<typeof neon> | null = null;
+
+// In-Memory Storage Fallback (used gracefully when DB is unreachable or unconfigured)
+export const fallbackStore = {
+  scans: [] as Array<{ id: string; product: string; createdAt: Date }>,
+  ratings: [] as Array<{ id: string; product: string; stars: number; comment: string; createdAt: Date }>,
+  leads: [] as Array<{ id: string; name: string; contact: string; promoCode: string; createdAt: Date }>,
+  orderClicks: [] as Array<{ id: string; product: string; platform: string; createdAt: Date }>,
+  recipes: new Map<string, any>(),
+  packages: new Map<string, any>(),
+  settings: new Map<string, any>([
+    ["siteTitle", "ملاحم ومطاعم المركزية"],
+    ["siteSubtitle", "اختر صنف اللحوم أو الدجاج المفضل لديك واكتشف أسرار تتبيل وطهي أصنافنا الفاخرة."],
+    ["meatTabLabel", "قسم اللحوم الحمراء"],
+    ["chickenTabLabel", "قسم الدجاج والطيور"],
+    ["allTabLabel", "جميع الأصناف"],
+  ]),
+  loyaltyCards: new Map<string, any>(),
+};
+
+/**
+ * Extracts and formats human-readable error messages from any DB exception or ErrorEvent.
+ * Completely prevents cryptic '[object ErrorEvent]' strings in the UI.
+ */
+export function formatDbError(err: any): string {
+  if (!err) return "خطأ غير معروف في الاتصال بقاعدة البيانات";
+
+  if (typeof err === "string") {
+    if (err.includes("ErrorEvent") || err === "[object ErrorEvent]") {
+      return "فشل اتصال قاعدة البيانات عبر الشبكة (WebSocket / TCP Network Error). يرجى التأكد من تشغيل الخادم وصحة DATABASE_URL.";
+    }
+    return err;
+  }
+
+  if (err instanceof Error) {
+    if (err.message && !err.message.includes("[object ErrorEvent]")) {
+      return err.message;
+    }
+  }
+
+  if (typeof err === "object") {
+    if ((err as any).code === "ENOTFOUND") {
+      const host = (err as any).hostname || "Host Not Found";
+      return `تعذر العثور على عنوان خادم قاعدة البيانات (${host}). يرجى التحقق من صحة DATABASE_URL في إعدادات البيئة.`;
+    }
+    if ((err as any).code === "ECONNREFUSED") {
+      return "تم رفض الاتصال بخادم قاعدة البيانات (Connection Refused). يرجى التأكد من تشغيل خادم PostgreSQL.";
+    }
+    if ((err as any).code === "28P01") {
+      return "اسم المستخدم أو كلمة السر الخاصة بقاعدة البيانات غير صحيحة (Invalid Database Credentials).";
+    }
+    if ((err as any).message && typeof (err as any).message === "string" && !(err as any).message.includes("[object ErrorEvent]")) {
+      return (err as any).message;
+    }
+    if ((err as any).type === "error" || (err as any).type) {
+      return "فشل اتصال شبكة قاعدة البيانات. يرجى التحقق من صحة المزود ورابط DATABASE_URL.";
+    }
+    try {
+      const json = JSON.stringify(err);
+      if (json && json !== "{}" && json !== "[]") return json;
+    } catch {}
+  }
+
+  const str = String(err);
+  return str.includes("ErrorEvent") || str === "[object ErrorEvent]"
+    ? "فشل الاتصال بقاعدة البيانات عبر الشبكة. تحقق من إعدادات البيئة DATABASE_URL."
+    : str;
+}
 
 function getDbUrl(): string {
   let url = process.env.DATABASE_URL || "postgresql://postgres:Almarkazia123%40@db.zucnkspwxotxptpywbof.supabase.co:5432/postgres";
+  // Auto-fix unencoded @ in password if entered as @@db...
+  if (url.includes("@@")) {
+    url = url.replace("@@", "%40@");
+  }
   if (url && (url.startsWith("postgres://") || url.startsWith("postgresql://"))) {
     if (!url.includes("sslmode=")) {
       url += url.includes("?") ? "&sslmode=require" : "?sslmode=require";
@@ -16,40 +89,52 @@ function getDbUrl(): string {
   return url;
 }
 
-let _pool: Pool | null = null;
-let _neonSql: ReturnType<typeof neon> | null = null;
-
 /**
  * Universal Query Execution
- * Automatically routes to Neon HTTP for neon.tech, or WebSocket Pool for Supabase / PostgreSQL.
+ * Automatically routes to Neon HTTP for neon.tech, or node-postgres Pool for Supabase / PostgreSQL.
  */
 export async function runQuery<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
   const url = getDbUrl();
   if (!url) {
-    throw new Error("DATABASE_URL غير موجود في إعدادات Cloudflare. يرجى إضافته في Settings -> Variables.");
+    throw new Error("DATABASE_URL غير موجود في إعدادات التكوين. يرجى إضافته في إعدادات البيئة.");
   }
   if (url.includes("[YOUR-PASSWORD]") || url.includes("YOUR_ACTUAL_PASSWORD") || url.includes("YOUR_PASSWORD")) {
-    throw new Error("يرجى استبدال [YOUR-PASSWORD] بكلمة السر الحقيقية الخاصة بالداتابيز في إعدادات Cloudflare.");
+    throw new Error("يرجى استبدال كلمة السر المؤقتة بكلمة السر الحقيقية الخاصة بالداتابيز في إعدادات البيئة.");
   }
 
-  // If Neon host
+  // Route to Neon HTTP driver for Neon hosts
   if (url.includes("neon.tech")) {
-    if (!_neonSql) _neonSql = neon(url);
-    // Convert parameterized query
-    if (params.length === 0) {
-      return (await _neonSql(queryText as any)) as unknown as T[];
-    } else {
-      const res = await _neonSql.transaction((tx: any) => [tx(queryText as any, ...params)]);
-      return (res[0] || []) as unknown as T[];
+    try {
+      if (!_neonSql) _neonSql = neon(url);
+      if (params.length === 0) {
+        return (await _neonSql(queryText as any)) as unknown as T[];
+      } else {
+        const res = await _neonSql.transaction((tx: any) => [tx(queryText as any, ...params)]);
+        return (res[0] || []) as unknown as T[];
+      }
+    } catch (err) {
+      throw new Error(formatDbError(err));
     }
   }
 
-  // For Supabase or standard PostgreSQL (via WebSocket connection pool in Cloudflare Workers)
-  if (!_pool) {
-    _pool = new Pool({ connectionString: url, connectionTimeoutMillis: 10000 });
+  // Route to node-postgres Pool for Supabase & standard PostgreSQL
+  if (!_pgPool) {
+    _pgPool = new PgPool({
+      connectionString: url,
+      connectionTimeoutMillis: 5000,
+      ssl: url.includes("sslmode=require") || url.includes("supabase.co") ? { rejectUnauthorized: false } : false,
+    });
+    _pgPool.on("error", (err) => {
+      console.error("PgPool background error:", formatDbError(err));
+    });
   }
-  const result = await _pool.query(queryText, params);
-  return result.rows as unknown as T[];
+
+  try {
+    const result = await _pgPool.query(queryText, params);
+    return result.rows as unknown as T[];
+  } catch (err) {
+    throw new Error(formatDbError(err));
+  }
 }
 
 /**
@@ -65,7 +150,6 @@ export function getSql() {
   };
 
   tagFn.transaction = async (fn: any) => {
-    // Basic fallback transaction runner
     return [];
   };
 
@@ -171,137 +255,219 @@ export async function ensureTablesExist() {
   _tablesEnsured = true;
 }
 
-// ─── Typed query helpers (Prisma-like compatibility API) ───────────────────────
+// ─── Typed query helpers (Prisma-compatible API) ───────────────────────────────
 
 export const prisma = {
   // ── Scan ──────────────────────────────────────────────────────────────────
   scan: {
     create: async ({ data }: { data: { id: string; product: string } }) => {
-      await runQuery(
-        `INSERT INTO "Scan" ("id","product") VALUES ($1,$2) ON CONFLICT ("id") DO NOTHING`,
-        [data.id, data.product]
-      );
+      try {
+        await runQuery(
+          `INSERT INTO "Scan" ("id","product") VALUES ($1,$2) ON CONFLICT ("id") DO NOTHING`,
+          [data.id, data.product]
+        );
+      } catch (err) {
+        console.warn("DB notice (Scan.create): using fallback store:", formatDbError(err));
+        fallbackStore.scans.unshift({ id: data.id, product: data.product, createdAt: new Date() });
+      }
       return data;
     },
     findMany: async () => {
-      return runQuery(`SELECT * FROM "Scan" ORDER BY "createdAt" DESC`);
+      try {
+        return await runQuery(`SELECT * FROM "Scan" ORDER BY "createdAt" DESC`);
+      } catch (err) {
+        console.warn("DB notice (Scan.findMany): using fallback store:", formatDbError(err));
+        return fallbackStore.scans;
+      }
     },
   },
 
   // ── Rating ────────────────────────────────────────────────────────────────
   rating: {
     create: async ({ data }: { data: { id: string; product: string; stars: number; comment?: string } }) => {
-      await runQuery(
-        `INSERT INTO "Rating" ("id","product","stars","comment") VALUES ($1,$2,$3,$4) ON CONFLICT ("id") DO NOTHING`,
-        [data.id, data.product, data.stars, data.comment || ""]
-      );
+      try {
+        await runQuery(
+          `INSERT INTO "Rating" ("id","product","stars","comment") VALUES ($1,$2,$3,$4) ON CONFLICT ("id") DO NOTHING`,
+          [data.id, data.product, data.stars, data.comment || ""]
+        );
+      } catch (err) {
+        console.warn("DB notice (Rating.create): using fallback store:", formatDbError(err));
+        fallbackStore.ratings.unshift({
+          id: data.id,
+          product: data.product,
+          stars: data.stars,
+          comment: data.comment || "",
+          createdAt: new Date(),
+        });
+      }
       return data;
     },
     findMany: async () => {
-      return runQuery(`SELECT * FROM "Rating" ORDER BY "createdAt" DESC`);
+      try {
+        return await runQuery(`SELECT * FROM "Rating" ORDER BY "createdAt" DESC`);
+      } catch (err) {
+        console.warn("DB notice (Rating.findMany): using fallback store:", formatDbError(err));
+        return fallbackStore.ratings;
+      }
     },
   },
 
   // ── Lead ──────────────────────────────────────────────────────────────────
   lead: {
     create: async ({ data }: { data: { id: string; name: string; contact: string; promoCode: string } }) => {
-      await runQuery(
-        `INSERT INTO "Lead" ("id","name","contact","promoCode") VALUES ($1,$2,$3,$4) ON CONFLICT ("id") DO NOTHING`,
-        [data.id, data.name, data.contact, data.promoCode]
-      );
+      try {
+        await runQuery(
+          `INSERT INTO "Lead" ("id","name","contact","promoCode") VALUES ($1,$2,$3,$4) ON CONFLICT ("id") DO NOTHING`,
+          [data.id, data.name, data.contact, data.promoCode]
+        );
+      } catch (err) {
+        console.warn("DB notice (Lead.create): using fallback store:", formatDbError(err));
+        fallbackStore.leads.unshift({
+          id: data.id,
+          name: data.name,
+          contact: data.contact,
+          promoCode: data.promoCode,
+          createdAt: new Date(),
+        });
+      }
       return data;
     },
     findMany: async () => {
-      return runQuery(`SELECT * FROM "Lead" ORDER BY "createdAt" DESC`);
+      try {
+        return await runQuery(`SELECT * FROM "Lead" ORDER BY "createdAt" DESC`);
+      } catch (err) {
+        console.warn("DB notice (Lead.findMany): using fallback store:", formatDbError(err));
+        return fallbackStore.leads;
+      }
     },
     findFirst: async ({ where }: { where: { contact: string } }) => {
-      const rows = await runQuery(`SELECT * FROM "Lead" WHERE "contact"=$1 LIMIT 1`, [where.contact]);
-      return rows[0] ?? null;
+      try {
+        const rows = await runQuery(`SELECT * FROM "Lead" WHERE "contact"=$1 LIMIT 1`, [where.contact]);
+        return rows[0] ?? null;
+      } catch (err) {
+        console.warn("DB notice (Lead.findFirst): using fallback store:", formatDbError(err));
+        return fallbackStore.leads.find((l) => l.contact === where.contact) ?? null;
+      }
     },
   },
 
   // ── OrderClick ────────────────────────────────────────────────────────────
   orderClick: {
     create: async ({ data }: { data: { id: string; product: string; platform: string } }) => {
-      await runQuery(
-        `INSERT INTO "OrderClick" ("id","product","platform") VALUES ($1,$2,$3) ON CONFLICT ("id") DO NOTHING`,
-        [data.id, data.product, data.platform]
-      );
+      try {
+        await runQuery(
+          `INSERT INTO "OrderClick" ("id","product","platform") VALUES ($1,$2,$3) ON CONFLICT ("id") DO NOTHING`,
+          [data.id, data.product, data.platform]
+        );
+      } catch (err) {
+        console.warn("DB notice (OrderClick.create): using fallback store:", formatDbError(err));
+        fallbackStore.orderClicks.unshift({
+          id: data.id,
+          product: data.product,
+          platform: data.platform,
+          createdAt: new Date(),
+        });
+      }
       return data;
     },
     findMany: async () => {
-      return runQuery(`SELECT * FROM "OrderClick" ORDER BY "createdAt" DESC`);
+      try {
+        return await runQuery(`SELECT * FROM "OrderClick" ORDER BY "createdAt" DESC`);
+      } catch (err) {
+        console.warn("DB notice (OrderClick.findMany): using fallback store:", formatDbError(err));
+        return fallbackStore.orderClicks;
+      }
     },
   },
 
   // ── Recipe ────────────────────────────────────────────────────────────────
   recipe: {
     findMany: async () => {
-      return runQuery(`SELECT * FROM "Recipe" ORDER BY "updatedAt" DESC`);
+      try {
+        return await runQuery(`SELECT * FROM "Recipe" ORDER BY "updatedAt" DESC`);
+      } catch (err) {
+        console.warn("DB notice (Recipe.findMany): using fallback store:", formatDbError(err));
+        return Array.from(fallbackStore.recipes.values());
+      }
     },
     findUnique: async ({ where }: { where: { id: string } }) => {
-      const rows = await runQuery(`SELECT * FROM "Recipe" WHERE "id"=$1 LIMIT 1`, [where.id]);
-      return rows[0] ?? null;
+      try {
+        const rows = await runQuery(`SELECT * FROM "Recipe" WHERE "id"=$1 LIMIT 1`, [where.id]);
+        return rows[0] ?? null;
+      } catch (err) {
+        console.warn("DB notice (Recipe.findUnique): using fallback store:", formatDbError(err));
+        return fallbackStore.recipes.get(where.id) ?? null;
+      }
     },
     create: async ({ data }: { data: any }) => {
-      await runQuery(
-        `INSERT INTO "Recipe" ("id","title","category","icon","meatType","cuisine","description","prepTime","cookTime","difficulty","videoUrl","videoPlaceholder","ingredients","instructions","tips","marinade","doneness","recommendedWeights")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
-         ON CONFLICT ("id") DO NOTHING`,
-        [
-          data.id,
-          data.title,
-          data.category,
-          data.icon || "",
-          data.meatType || "meat",
-          data.cuisine || "arabic",
-          data.description || "",
-          data.prepTime || "",
-          data.cookTime || "",
-          data.difficulty || "",
-          data.videoUrl || "",
-          data.videoPlaceholder || "",
-          data.ingredients || "[]",
-          data.instructions || "[]",
-          data.tips || "[]",
-          data.marinade || "",
-          data.doneness || null,
-          data.recommendedWeights || null,
-        ]
-      );
+      try {
+        await runQuery(
+          `INSERT INTO "Recipe" ("id","title","category","icon","meatType","cuisine","description","prepTime","cookTime","difficulty","videoUrl","videoPlaceholder","ingredients","instructions","tips","marinade","doneness","recommendedWeights")
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+           ON CONFLICT ("id") DO NOTHING`,
+          [
+            data.id,
+            data.title,
+            data.category,
+            data.icon || "",
+            data.meatType || "meat",
+            data.cuisine || "arabic",
+            data.description || "",
+            data.prepTime || "",
+            data.cookTime || "",
+            data.difficulty || "",
+            data.videoUrl || "",
+            data.videoPlaceholder || "",
+            data.ingredients || "[]",
+            data.instructions || "[]",
+            data.tips || "[]",
+            data.marinade || "",
+            data.doneness || null,
+            data.recommendedWeights || null,
+          ]
+        );
+      } catch (err) {
+        console.warn("DB notice (Recipe.create): using fallback store:", formatDbError(err));
+        fallbackStore.recipes.set(data.id, data);
+      }
       return data;
     },
     upsert: async ({ where, update, create }: any) => {
       const d = { ...create, ...update };
-      await runQuery(
-        `INSERT INTO "Recipe" ("id","title","category","icon","meatType","cuisine","description","prepTime","cookTime","difficulty","videoUrl","videoPlaceholder","ingredients","instructions","tips","marinade","doneness","recommendedWeights")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
-         ON CONFLICT ("id") DO UPDATE SET
-           "title"=$2,"category"=$3,"icon"=$4,"meatType"=$5,"cuisine"=$6,"description"=$7,
-           "prepTime"=$8,"cookTime"=$9,"difficulty"=$10,"videoUrl"=$11,"ingredients"=$13,
-           "instructions"=$14,"tips"=$15,"marinade"=$16,"doneness"=$17,"recommendedWeights"=$18,
-           "updatedAt"=NOW()`,
-        [
-          where.id,
-          d.title,
-          d.category || "",
-          d.icon || "",
-          d.meatType || "meat",
-          d.cuisine || "arabic",
-          d.description || "",
-          d.prepTime || "",
-          d.cookTime || "",
-          d.difficulty || "",
-          d.videoUrl || "",
-          d.videoPlaceholder || "شاهد الفيديو",
-          d.ingredients || "[]",
-          d.instructions || "[]",
-          d.tips || "[]",
-          d.marinade || "",
-          d.doneness || null,
-          d.recommendedWeights || null,
-        ]
-      );
+      try {
+        await runQuery(
+          `INSERT INTO "Recipe" ("id","title","category","icon","meatType","cuisine","description","prepTime","cookTime","difficulty","videoUrl","videoPlaceholder","ingredients","instructions","tips","marinade","doneness","recommendedWeights")
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+           ON CONFLICT ("id") DO UPDATE SET
+             "title"=$2,"category"=$3,"icon"=$4,"meatType"=$5,"cuisine"=$6,"description"=$7,
+             "prepTime"=$8,"cookTime"=$9,"difficulty"=$10,"videoUrl"=$11,"ingredients"=$13,
+             "instructions"=$14,"tips"=$15,"marinade"=$16,"doneness"=$17,"recommendedWeights"=$18,
+             "updatedAt"=NOW()`,
+          [
+            where.id,
+            d.title,
+            d.category || "",
+            d.icon || "",
+            d.meatType || "meat",
+            d.cuisine || "arabic",
+            d.description || "",
+            d.prepTime || "",
+            d.cookTime || "",
+            d.difficulty || "",
+            d.videoUrl || "",
+            d.videoPlaceholder || "شاهد الفيديو",
+            d.ingredients || "[]",
+            d.instructions || "[]",
+            d.tips || "[]",
+            d.marinade || "",
+            d.doneness || null,
+            d.recommendedWeights || null,
+          ]
+        );
+      } catch (err) {
+        console.warn("DB notice (Recipe.upsert): using fallback store:", formatDbError(err));
+        fallbackStore.recipes.set(where.id, { id: where.id, ...d });
+      }
       return { id: where.id, ...d };
     },
   },
@@ -309,23 +475,39 @@ export const prisma = {
   // ── SiteSetting ───────────────────────────────────────────────────────────
   siteSetting: {
     findMany: async () => {
-      return runQuery(`SELECT * FROM "SiteSetting"`);
+      try {
+        return await runQuery(`SELECT * FROM "SiteSetting"`);
+      } catch (err) {
+        console.warn("DB notice (SiteSetting.findMany): using fallback store:", formatDbError(err));
+        return Array.from(fallbackStore.settings.entries()).map(([key, value]) => ({ key, value }));
+      }
     },
     upsert: async ({ where, update, create }: any) => {
-      await runQuery(
-        `INSERT INTO "SiteSetting" ("key","value") VALUES ($1,$2)
-         ON CONFLICT ("key") DO UPDATE SET "value"=$2,"updatedAt"=NOW()`,
-        [where.key, create.value]
-      );
-      return { key: where.key, value: update.value };
+      const val = create?.value ?? update?.value ?? "";
+      fallbackStore.settings.set(where.key, val);
+      try {
+        await runQuery(
+          `INSERT INTO "SiteSetting" ("key","value") VALUES ($1,$2)
+           ON CONFLICT ("key") DO UPDATE SET "value"=$2,"updatedAt"=NOW()`,
+          [where.key, val]
+        );
+      } catch (err) {
+        console.warn("DB notice (SiteSetting.upsert): saved to fallback store:", formatDbError(err));
+      }
+      return { key: where.key, value: val };
     },
   },
 
   // ── LoyaltyCard ───────────────────────────────────────────────────────────
   loyaltyCard: {
     findUnique: async ({ where }: { where: { phone: string } }) => {
-      const rows = await runQuery(`SELECT * FROM "LoyaltyCard" WHERE "phone"=$1 LIMIT 1`, [where.phone]);
-      return rows[0] ?? null;
+      try {
+        const rows = await runQuery(`SELECT * FROM "LoyaltyCard" WHERE "phone"=$1 LIMIT 1`, [where.phone]);
+        return rows[0] ?? null;
+      } catch (err) {
+        console.warn("DB notice (LoyaltyCard.findUnique): using fallback store:", formatDbError(err));
+        return fallbackStore.loyaltyCards.get(where.phone) ?? null;
+      }
     },
   },
 
@@ -337,3 +519,4 @@ export const prisma = {
     return runQuery<T>(query, params);
   },
 };
+
