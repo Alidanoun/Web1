@@ -103,10 +103,11 @@ export async function runQuery<T = any>(queryText: string, params: any[] = []): 
   try {
     if (!_neonSql) _neonSql = neon(url);
     if (params.length === 0) {
+      // Tagged template call for no-param queries (safe)
       return (await _neonSql(queryText as any)) as unknown as T[];
     } else {
-      const res = await _neonSql.transaction((tx: any) => [tx(queryText as any, ...params)]);
-      return (res[0] || []) as unknown as T[];
+      // Use .query() for parameterized queries — required by @neondatabase/serverless v1+
+      return (await (_neonSql as any).query(queryText, params)) as unknown as T[];
     }
   } catch (err) {
     throw new Error(formatDbError(err));
@@ -115,6 +116,7 @@ export async function runQuery<T = any>(queryText: string, params: any[] = []): 
 
 /**
  * Tagged template literal helper: sql`SELECT * FROM "Table" WHERE id = ${id}`
+ * Works with @neondatabase/serverless v1+ by routing through runQuery/.query()
  */
 export function getSql() {
   const tagFn = async (strings: TemplateStringsArray, ...values: any[]) => {
