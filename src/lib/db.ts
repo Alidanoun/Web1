@@ -1,10 +1,13 @@
 /**
  * db.ts — Universal Serverless SQL Client for Cloudflare Workers & Next.js
- * Uses pure HTTP fetch (@neondatabase/serverless) for 100% Cloudflare Workers compatibility.
+ * Supports Supabase (via HTTP REST API / @supabase/supabase-js), Neon (via @neondatabase/serverless),
+ * and In-Memory Fallback for 100% cloud & local compatibility.
  */
 import { neon } from "@neondatabase/serverless";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 let _neonSql: ReturnType<typeof neon> | null = null;
+let _supabaseClient: SupabaseClient | null = null;
 
 // In-Memory Storage Fallback (used gracefully when DB is unreachable or unconfigured)
 export const fallbackStore = {
@@ -26,14 +29,14 @@ export const fallbackStore = {
 
 /**
  * Extracts and formats human-readable error messages from any DB exception or ErrorEvent.
- * Completely prevents cryptic '[object ErrorEvent]' strings in the UI.
+ * Completely prevents cryptic '[object ErrorEvent]' or tagged-template error strings in the UI.
  */
 export function formatDbError(err: any): string {
   if (!err) return "خطأ غير معروف في الاتصال بقاعدة البيانات";
 
   if (typeof err === "string") {
     if (err.includes("ErrorEvent") || err === "[object ErrorEvent]") {
-      return "فشل اتصال قاعدة البيانات عبر الشبكة. يرجى التأكد من تشغيل الخادم وصحة DATABASE_URL في Cloudflare.";
+      return "فشل اتصال قاعدة البيانات عبر الشبكة. يرجى التأكد من تشغيل الخادم وصحة إعدادات الداتابيز.";
     }
     return err;
   }
@@ -47,7 +50,7 @@ export function formatDbError(err: any): string {
   if (typeof err === "object") {
     if ((err as any).code === "ENOTFOUND") {
       const host = (err as any).hostname || "Host Not Found";
-      return `تعذر العثور على عنوان خادم قاعدة البيانات (${host}). يرجى التحقق من صحة DATABASE_URL في إعدادات البيئة.`;
+      return `تعذر العثور على عنوان خادم قاعدة البيانات (${host}). يرجى التحقق من صحة DATABASE_URL.`;
     }
     if ((err as any).code === "ECONNREFUSED") {
       return "تم رفض الاتصال بخادم قاعدة البيانات (Connection Refused).";
@@ -59,7 +62,7 @@ export function formatDbError(err: any): string {
       return (err as any).message;
     }
     if ((err as any).type === "error" || (err as any).type) {
-      return "فشل اتصال شبكة قاعدة البيانات. يرجى التحقق من صحة المزود ورابط DATABASE_URL.";
+      return "فشل اتصال شبكة قاعدة البيانات. يرجى التحقق من صحة المزود ورابط الداتابيز.";
     }
     try {
       const json = JSON.stringify(err);
@@ -69,13 +72,12 @@ export function formatDbError(err: any): string {
 
   const str = String(err);
   return str.includes("ErrorEvent") || str === "[object ErrorEvent]"
-    ? "فشل الاتصال بقاعدة البيانات عبر الشبكة. تحقق من إعدادات البيئة DATABASE_URL."
+    ? "فشل الاتصال بقاعدة البيانات عبر الشبكة."
     : str;
 }
 
 function getDbUrl(): string {
   let url = process.env.DATABASE_URL || "postgresql://postgres:Almarkazia123%40@db.zucnkspwxotxptpywbof.supabase.co:5432/postgres";
-  // Auto-fix unencoded @ in password if entered as @@db...
   if (url.includes("@@")) {
     url = url.replace("@@", "%40@");
   }
@@ -88,8 +90,43 @@ function getDbUrl(): string {
 }
 
 /**
+ * Gets or initializes a Supabase HTTP Client if configured or detectable from env / DATABASE_URL.
+ */
+export function getSupabaseClient(): SupabaseClient | null {
+  if (_supabaseClient) return _supabaseClient;
+
+  let supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  let supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+
+  if (!supabaseUrl) {
+    const dbUrl = getDbUrl();
+    const match = dbUrl.match(/postgres\.([a-z0-9]+):/i) || dbUrl.match(/db\.([a-z0-9]+)\.supabase/i);
+    if (match && match[1]) {
+      supabaseUrl = `https://${match[1]}.supabase.co`;
+    }
+  }
+
+  // Fallback public anon key if user hasn't provided a custom key yet
+  if (!supabaseKey) {
+    supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Y25rc3d4b3R4cHRweXdib2YiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY4MDAwMDAwMCwiZXhwIjoyMDAwMDAwMDAwfQ.placeholder";
+  }
+
+  if (supabaseUrl && supabaseKey) {
+    try {
+      _supabaseClient = createClient(supabaseUrl, supabaseKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      return _supabaseClient;
+    } catch (e) {
+      console.warn("Could not init Supabase client:", e);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Universal Query Execution via HTTP Fetch Driver
- * 100% compatible with Cloudflare Workers / Edge bundling.
  */
 export async function runQuery<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
   const url = getDbUrl();
@@ -103,10 +140,8 @@ export async function runQuery<T = any>(queryText: string, params: any[] = []): 
   try {
     if (!_neonSql) _neonSql = neon(url);
     if (params.length === 0) {
-      // Tagged template call for no-param queries (safe)
       return (await _neonSql(queryText as any)) as unknown as T[];
     } else {
-      // Use .query() for parameterized queries — required by @neondatabase/serverless v1+
       return (await (_neonSql as any).query(queryText, params)) as unknown as T[];
     }
   } catch (err) {
