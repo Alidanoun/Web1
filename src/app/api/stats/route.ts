@@ -31,16 +31,17 @@ export async function GET() {
   // Scans per product
   const scans: Record<string, number> = {};
   dbScans.forEach((s) => {
-    const p = s.product.toLowerCase();
+    const p = (s.product || "home").toLowerCase();
     scans[p] = (scans[p] || 0) + 1;
   });
 
   // Ratings aggregation
   const ratingAgg: Record<string, { total: number; count: number }> = {};
   dbRatings.forEach((r) => {
-    const p = r.product.toLowerCase();
+    const p = (r.product || "general").toLowerCase();
+    const stars = typeof r.stars === "number" ? r.stars : 5;
     if (!ratingAgg[p]) ratingAgg[p] = { total: 0, count: 0 };
-    ratingAgg[p].total += r.stars;
+    ratingAgg[p].total += stars;
     ratingAgg[p].count += 1;
   });
 
@@ -56,7 +57,7 @@ export async function GET() {
   // Clicks per platform
   const clicks: Record<string, number> = {};
   dbClicks.forEach((c) => {
-    const pl = c.platform.toLowerCase();
+    const pl = (c.platform || "website").toLowerCase();
     clicks[pl] = (clicks[pl] || 0) + 1;
   });
 
