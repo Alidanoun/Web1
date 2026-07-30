@@ -13,6 +13,7 @@ export function middleware(request: NextRequest) {
     path.startsWith("/api/reset") ||
     path.startsWith("/api/seed") ||
     path.startsWith("/api/loyalty/all") ||
+    path.startsWith("/api/upload-image") ||
     (path.startsWith("/api/recipes") && method !== "GET");
 
   if (!isProtectedPath) {
@@ -52,5 +53,6 @@ export const config = {
     "/api/reset",
     "/api/seed",
     "/api/loyalty/all",
+    "/api/upload-image",
   ],
 };

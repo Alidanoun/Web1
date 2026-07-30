@@ -15,6 +15,7 @@ interface DisplayRecipe {
   cuisine: "arabic" | "international";
   description: string;
   icon?: string;
+  imageUrl?: string;
 }
 
 export default function HomePage() {
@@ -72,6 +73,7 @@ export default function HomePage() {
               cuisine: r.cuisine || "arabic",
               description: r.description || "",
               icon,
+              imageUrl: r.imageUrl || "",
             };
           });
           setRecipesList(formatted);
@@ -294,7 +296,23 @@ export default function HomePage() {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "1rem", textAlign: "right" }}>
-                  <span style={{ fontSize: "2.3rem" }}>{recipe.icon}</span>
+                  {recipe.imageUrl ? (
+                    <img
+                      src={recipe.imageUrl}
+                      alt={recipe.title}
+                      loading="lazy"
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: 12,
+                        objectFit: "cover",
+                        flexShrink: 0,
+                        border: "1px solid rgba(223, 138, 39, 0.3)",
+                      }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: "2.3rem", flexShrink: 0 }}>{recipe.icon}</span>
+                  )}
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.2rem", flexWrap: "wrap" }}>
                       <h4 style={{ fontWeight: 800, fontSize: "1.05rem", color: "white" }}>{recipe.title}</h4>

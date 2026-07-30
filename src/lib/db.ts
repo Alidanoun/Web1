@@ -174,6 +174,7 @@ export async function ensureTablesExist() {
       "title"              TEXT NOT NULL,
       "category"           TEXT NOT NULL,
       "icon"               TEXT NOT NULL DEFAULT '',
+      "imageUrl"           TEXT NOT NULL DEFAULT '',
       "meatType"           TEXT NOT NULL DEFAULT 'meat',
       "cuisine"            TEXT NOT NULL DEFAULT 'arabic',
       "description"        TEXT NOT NULL DEFAULT '',
@@ -190,6 +191,8 @@ export async function ensureTablesExist() {
       "recommendedWeights" TEXT,
       "updatedAt"          TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
+
+  await runQuery(`ALTER TABLE "Recipe" ADD COLUMN IF NOT EXISTS "imageUrl" TEXT NOT NULL DEFAULT ''`);
 
   await runQuery(`
     CREATE TABLE IF NOT EXISTS "Package" (
@@ -375,14 +378,15 @@ export const prisma = {
     create: async ({ data }: { data: any }) => {
       try {
         await runQuery(
-          `INSERT INTO "Recipe" ("id","title","category","icon","meatType","cuisine","description","prepTime","cookTime","difficulty","videoUrl","videoPlaceholder","ingredients","instructions","tips","marinade","doneness","recommendedWeights")
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+          `INSERT INTO "Recipe" ("id","title","category","icon","imageUrl","meatType","cuisine","description","prepTime","cookTime","difficulty","videoUrl","videoPlaceholder","ingredients","instructions","tips","marinade","doneness","recommendedWeights")
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
            ON CONFLICT ("id") DO NOTHING`,
           [
             data.id,
             data.title,
             data.category,
             data.icon || "",
+            data.imageUrl || "",
             data.meatType || "meat",
             data.cuisine || "arabic",
             data.description || "",
@@ -409,18 +413,19 @@ export const prisma = {
       const d = { ...create, ...update };
       try {
         await runQuery(
-          `INSERT INTO "Recipe" ("id","title","category","icon","meatType","cuisine","description","prepTime","cookTime","difficulty","videoUrl","videoPlaceholder","ingredients","instructions","tips","marinade","doneness","recommendedWeights")
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+          `INSERT INTO "Recipe" ("id","title","category","icon","imageUrl","meatType","cuisine","description","prepTime","cookTime","difficulty","videoUrl","videoPlaceholder","ingredients","instructions","tips","marinade","doneness","recommendedWeights")
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
            ON CONFLICT ("id") DO UPDATE SET
-             "title"=$2,"category"=$3,"icon"=$4,"meatType"=$5,"cuisine"=$6,"description"=$7,
-             "prepTime"=$8,"cookTime"=$9,"difficulty"=$10,"videoUrl"=$11,"ingredients"=$13,
-             "instructions"=$14,"tips"=$15,"marinade"=$16,"doneness"=$17,"recommendedWeights"=$18,
+             "title"=$2,"category"=$3,"icon"=$4,"imageUrl"=$5,"meatType"=$6,"cuisine"=$7,"description"=$8,
+             "prepTime"=$9,"cookTime"=$10,"difficulty"=$11,"videoUrl"=$12,"ingredients"=$14,
+             "instructions"=$15,"tips"=$16,"marinade"=$17,"doneness"=$18,"recommendedWeights"=$19,
              "updatedAt"=NOW()`,
           [
             where.id,
             d.title,
             d.category || "",
             d.icon || "",
+            d.imageUrl || "",
             d.meatType || "meat",
             d.cuisine || "arabic",
             d.description || "",

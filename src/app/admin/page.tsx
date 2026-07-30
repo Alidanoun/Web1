@@ -43,6 +43,7 @@ interface RecipeData {
   videoPlaceholder: string;
   videoUrl?: string;
   icon?: string;
+  imageUrl?: string;
   ingredients: any;
   instructions: string[];
   tips: string[];
@@ -106,10 +107,41 @@ export default function AdminDashboard() {
   const [formMeatType, setFormMeatType] = useState<"meat" | "chicken">("meat");
   const [formCategory, setFormCategory] = useState("ستيك");
   const [formIcon, setFormIcon] = useState("");
+  const [formImageUrl, setFormImageUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [formIngredients, setFormIngredients] = useState("");
   const [formInstructions, setFormInstructions] = useState("");
   const [formTips, setFormTips] = useState("");
   const [formMarinade, setFormMarinade] = useState("");
+
+  const resizeImage = (file: File, maxWidth = 1200, quality = 0.8): Promise<Blob> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(img.src);
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            resolve(blob || file);
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+    });
+  };
 
   const fetchStats = async () => {
     try {
@@ -241,6 +273,7 @@ export default function AdminDashboard() {
     setFormVideoUrl(recipe.videoUrl || "");
     setFormCuisine(recipe.cuisine || "arabic");
     setFormIcon(recipe.icon || "");
+    setFormImageUrl(recipe.imageUrl || "");
 
     if (Array.isArray(recipe.ingredients)) {
       setFormIngredients(recipe.ingredients.join("\n"));
@@ -269,6 +302,8 @@ export default function AdminDashboard() {
       difficulty: "سهل",
       videoPlaceholder: "شاهد طريقة التحضير",
       videoUrl: "",
+      icon: "🥩",
+      imageUrl: "",
       ingredients: [],
       instructions: [],
       tips: [],
@@ -296,6 +331,7 @@ export default function AdminDashboard() {
         title: formTitle,
         category: formCategory || "عام",
         icon: formIcon,
+        imageUrl: formImageUrl,
         meatType: formMeatType || "meat",
         description: formDesc,
         prepTime: formPrep,
@@ -1354,6 +1390,89 @@ export default function AdminDashboard() {
                         {emoji}
                       </button>
                     ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recipe Real Image Upload Input */}
+              <div className="form-group" style={{ background: "rgba(255,255,255,0.03)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(223, 138, 39, 0.2)" }}>
+                <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                  🖼️ صورة الوصفة الحقيقية (تظهر بالبطاقة والصفحة بدلاً من الإيموجي):
+                </label>
+                
+                <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap", marginTop: "0.5rem" }}>
+                  {formImageUrl ? (
+                    <div style={{ position: "relative", display: "inline-block" }}>
+                      <img
+                        src={formImageUrl}
+                        alt="معاينة الصورة"
+                        style={{ width: "90px", height: "90px", borderRadius: "10px", objectFit: "cover", border: "2px solid var(--color-brand-gold)" }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormImageUrl("")}
+                        style={{
+                          position: "absolute",
+                          top: "-8px",
+                          right: "-8px",
+                          background: "#ef4444",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "24px",
+                          height: "24px",
+                          cursor: "pointer",
+                          fontWeight: "bold",
+                          fontSize: "0.75rem",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                        title="حذف الصورة"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ width: "90px", height: "90px", borderRadius: "10px", border: "2px dashed var(--color-border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-muted)", fontSize: "1.8rem" }}>
+                      📷
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", flex: 1 }}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploadingImage}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploadingImage(true);
+                        try {
+                          const resizedBlob = await resizeImage(file, 1200, 0.8);
+                          const fd = new FormData();
+                          fd.append("file", resizedBlob, file.name.replace(/\.[^/.]+$/, "") + ".jpg");
+                          fd.append("recipeId", formId || "recipe");
+
+                          const res = await fetch("/api/upload-image", { method: "POST", body: fd });
+                          const data = await res.json();
+                          if (res.ok && data.success) {
+                            setFormImageUrl(data.imageUrl);
+                          } else {
+                            alert(data.error || "فشل رفع الصورة");
+                          }
+                        } catch (err) {
+                          console.error("Upload error:", err);
+                          alert("خطأ أثناء معالجة أو رفع الصورة");
+                        } finally {
+                          setUploadingImage(false);
+                        }
+                      }}
+                      style={{ fontSize: "0.85rem", color: "white" }}
+                    />
+                    <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+                      {uploadingImage ? "جاري ضغط ورفع الصورة..." : "* يتم تصغير الصورة تلقائياً لحجم مثالي وتنسيق عالي الجودة لسرعة التصفح."}
+                    </span>
                   </div>
                 </div>
               </div>

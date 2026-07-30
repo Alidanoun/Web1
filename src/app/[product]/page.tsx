@@ -38,6 +38,8 @@ export default async function ProductRecipePage({ params, searchParams }: PagePr
         id: dbRecipe.id,
         title: dbRecipe.title,
         category: dbRecipe.category,
+        icon: dbRecipe.icon || "",
+        imageUrl: dbRecipe.imageUrl || "",
         description: dbRecipe.description,
         prepTime: dbRecipe.prepTime,
         cookTime: dbRecipe.cookTime,
@@ -137,6 +139,16 @@ export default async function ProductRecipePage({ params, searchParams }: PagePr
           <div style={{ display: "flex", flexDirection: "column" }}>
             {/* Recipe Title & Info Card */}
             <div className="card card-gold-border">
+              {recipe.imageUrl ? (
+                <div style={{ marginBottom: "1rem", borderRadius: "12px", overflow: "hidden" }}>
+                  <img
+                    src={recipe.imageUrl}
+                    alt={recipe.title}
+                    style={{ width: "100%", height: "200px", objectFit: "cover", display: "block" }}
+                  />
+                </div>
+              ) : null}
+
               <h2
                 style={{
                   fontSize: "1.25rem",

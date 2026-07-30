@@ -46,6 +46,7 @@ export async function GET() {
             title: r.title,
             category: r.category,
             icon: r.icon || "",
+            imageUrl: r.imageUrl || "",
             meatType: r.meatType || "meat",
             cuisine: r.cuisine || "arabic",
             description: r.description,
@@ -80,7 +81,7 @@ export async function PUT(req: Request) {
   try {
     await ensureTablesExist();
     const body = await req.json();
-    const { id, title, category, icon, meatType, cuisine, description, prepTime, cookTime, difficulty, videoUrl, ingredients, instructions, tips, marinade, recommendedWeights } = body;
+    const { id, title, category, icon, imageUrl, meatType, cuisine, description, prepTime, cookTime, difficulty, videoUrl, ingredients, instructions, tips, marinade, recommendedWeights } = body;
 
     if (!id || !title) {
       return NextResponse.json({ error: "معرف الوصفة والعنوان مطلوبان" }, { status: 400 });
@@ -94,6 +95,7 @@ export async function PUT(req: Request) {
         title,
         category: category || cleanId,
         icon: icon || "",
+        imageUrl: imageUrl || "",
         meatType: meatType === "chicken" ? "chicken" : "meat",
         cuisine: cuisine || "arabic",
         description: description || "",
@@ -112,6 +114,7 @@ export async function PUT(req: Request) {
         title,
         category: category || cleanId,
         icon: icon || "",
+        imageUrl: imageUrl || "",
         meatType: meatType === "chicken" ? "chicken" : "meat",
         cuisine: cuisine || "arabic",
         description: description || "",

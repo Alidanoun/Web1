@@ -17,6 +17,8 @@ export interface Recipe {
   difficulty: string;
   videoPlaceholder: string;
   videoUrl?: string;
+  icon?: string;
+  imageUrl?: string;
   ingredients: string[];
   instructions: string[];
   tips: string[];

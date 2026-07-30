@@ -42,6 +42,7 @@ model Recipe {
   title            String
   category         String
   icon             String   @default("") // Custom emoji like 🥩, 🍗, 🍔, 🍢, 🍖
+  imageUrl         String   @default("") // Real recipe image URL
   meatType         String   @default("meat") // 'meat' or 'chicken'
   cuisine          String   @default("arabic") // 'arabic' or 'international'
   description      String
