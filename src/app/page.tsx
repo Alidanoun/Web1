@@ -223,8 +223,8 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* Secondary Subcategories Pills (إذا وُجدت) */}
-          {availableCategories.length > 1 && (
+          {/* Secondary Subcategories Pills (تظهر دائماً عند وجود تصنيفات) */}
+          {availableCategories.length > 0 && (
             <div
               style={{
                 display: "flex",
