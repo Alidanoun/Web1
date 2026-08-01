@@ -19,6 +19,9 @@ interface Scan {
 
 interface StatsData {
   scans: Record<string, number>;
+  qrScansCount?: number;
+  directVisitsCount?: number;
+  totalScansCount?: number;
   ratings: Record<string, { count: number; avg: number }>;
   leads: {
     total: number;
@@ -466,12 +469,22 @@ export default function AdminDashboard() {
       {/* TAB 1: ANALYTICS DASHBOARD */}
       {activeTab === "stats" && stats && (
         <div>
-          {/* Main Counters Grid (4 columns on desktop, 2 on mobile) */}
-          <div className="grid-categories" style={{ marginBottom: "1.25rem" }}>
+          {/* Main Counters Grid (5 columns / responsive grid) */}
+          <div className="grid-categories" style={{ marginBottom: "1.25rem", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+            {/* Dedicated QR Scans Card */}
+            <div className="card card-gold-border" style={{ padding: "1rem", textAlign: "center", marginBottom: 0, background: "linear-gradient(135deg, rgba(223,138,39,0.15) 0%, rgba(20,16,12,0.9) 100%)" }}>
+              <span style={{ fontSize: "1.6rem" }}>📲</span>
+              <h4 style={{ fontSize: "0.8rem", color: "var(--color-brand-gold)", fontWeight: 800, margin: "0.25rem 0" }}>مسحات رمز الـ QR</h4>
+              <strong style={{ fontSize: "1.6rem", color: "var(--color-brand-gold)" }}>{stats.qrScansCount || 0}</strong>
+              <span style={{ display: "block", fontSize: "0.68rem", color: "var(--color-text-muted)", marginTop: "0.2rem" }}>من الرمز المطبوع فقط</span>
+            </div>
+
+            {/* Total Page Visits */}
             <div className="card card-gold-border" style={{ padding: "1rem", textAlign: "center", marginBottom: 0 }}>
-              <span style={{ fontSize: "1.5rem" }}>📱</span>
-              <h4 style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", margin: "0.25rem 0" }}>إجمالي دخول العملاء</h4>
-              <strong style={{ fontSize: "1.5rem", color: "white" }}>{totalScans}</strong>
+              <span style={{ fontSize: "1.5rem" }}>🌐</span>
+              <h4 style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", margin: "0.25rem 0" }}>إجمالي زيارات الموقع</h4>
+              <strong style={{ fontSize: "1.5rem", color: "white" }}>{stats.totalScansCount || totalScans}</strong>
+              <span style={{ display: "block", fontSize: "0.68rem", color: "var(--color-text-muted)", marginTop: "0.2rem" }}>شامل التصفح المباشر</span>
             </div>
 
             <div className="card card-gold-border" style={{ padding: "1rem", textAlign: "center", marginBottom: 0 }}>
@@ -805,28 +818,13 @@ export default function AdminDashboard() {
             {/* Platform Performance Card */}
             <div className="card">
               <h3 style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--color-brand-gold)", marginBottom: "0.75rem" }}>
-                🛵 مصادر طلبات التوصيل (نقرات)
+                📞 نقرات الاتصال بخدمة العملاء المباشرة
               </h3>
-              <div className="platforms-grid">
-                <div>
-                  <span style={{ fontSize: "1.2rem", display: "block" }}>🛵</span>
-                  <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>طلبات</span>
-                  <strong style={{ fontSize: "1.1rem", display: "block", color: "white" }}>{stats.clicks.talabat || 0}</strong>
-                </div>
-                <div>
-                  <span style={{ fontSize: "1.2rem", display: "block" }}>🚗</span>
-                  <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>كريم</span>
-                  <strong style={{ fontSize: "1.1rem", display: "block", color: "white" }}>{stats.clicks.careem || 0}</strong>
-                </div>
-                <div>
-                  <span style={{ fontSize: "1.2rem", display: "block" }}>🌐</span>
-                  <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>الموقع</span>
-                  <strong style={{ fontSize: "1.1rem", display: "block", color: "white" }}>{stats.clicks.website || 0}</strong>
-                </div>
-                <div>
-                  <span style={{ fontSize: "1.2rem", display: "block" }}>📞</span>
-                  <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>الهاتف</span>
-                  <strong style={{ fontSize: "1.1rem", display: "block", color: "white" }}>{stats.clicks.phone || 0}</strong>
+              <div className="platforms-grid" style={{ gridTemplateColumns: "1fr" }}>
+                <div style={{ textAlign: "center", padding: "0.75rem" }}>
+                  <span style={{ fontSize: "1.6rem", display: "block" }}>📞</span>
+                  <span style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", display: "block", margin: "0.35rem 0" }}>نقرات الاتصال الهاتفي المباشر</span>
+                  <strong style={{ fontSize: "1.5rem", display: "block", color: "white" }}>{stats.clicks.phone || 0}</strong>
                 </div>
               </div>
             </div>

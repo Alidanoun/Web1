@@ -31,27 +31,6 @@ export default function OrderModal({ product }: OrderModalProps) {
 
   const platforms = [
     {
-      name: "طلب مباشر عبر طلبات (Talabat)",
-      icon: "🛵",
-      description: "طلب سريع وتوصيل لباب بيتك عبر تطبيق طلبات",
-      url: "https://www.talabat.com",
-      key: "talabat",
-    },
-    {
-      name: "طلب مباشر عبر كريم (Careem)",
-      icon: "🚗",
-      description: "اطلب وجبتك المفضلة وسنوصلها عبر كابتن كريم",
-      url: "https://www.careem.com",
-      key: "careem",
-    },
-    {
-      name: "موقع شركة المركزية الإلكتروني",
-      icon: "🌐",
-      description: "استعرض كامل قائمتنا واحصل على عروض حصرية",
-      url: "https://recipes.markzia.com",
-      key: "website",
-    },
-    {
       name: "رقم خدمة العملاء المباشر",
       icon: "📞",
       description: "اتصل بنا هاتفياً لترتيب طلبك وتلبية طلباتك الخاصة",
@@ -89,7 +68,7 @@ export default function OrderModal({ product }: OrderModalProps) {
                 textAlign: "center",
               }}
             >
-              خيارات الطلب المباشر
+              الطلب المباشر
             </h3>
             <p
               style={{
@@ -99,7 +78,7 @@ export default function OrderModal({ product }: OrderModalProps) {
                 marginBottom: "1.5rem",
               }}
             >
-              اختر منصتك المفضلة لطلب الوجبة جاهزة من مطاعم المركزية:
+              اتصل بنا مباشرة لطلب الوجبة جاهزة من مطاعم المركزية:
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
