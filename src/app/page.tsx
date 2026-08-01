@@ -19,7 +19,7 @@ interface DisplayRecipe {
 }
 
 export default function HomePage() {
-  const [selectedMeatType, setSelectedMeatType] = useState<"all" | "meat" | "chicken">("meat");
+  const [selectedMeatType, setSelectedMeatType] = useState<string>("meat");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [recipesList, setRecipesList] = useState<DisplayRecipe[]>([]);
   const [settings, setSettings] = useState({
@@ -28,6 +28,7 @@ export default function HomePage() {
     meatTabLabel: "قسم اللحوم الحمراء",
     chickenTabLabel: "قسم الدجاج والطيور",
     allTabLabel: "جميع الأصناف",
+    customSections: [] as { id: string; name: string; icon: string }[],
   });
 
   useEffect(() => {
@@ -36,7 +37,17 @@ export default function HomePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.settings) {
-          setSettings((prev) => ({ ...prev, ...data.settings }));
+          let customParsed = [];
+          if (data.settings.customSections) {
+            try {
+              customParsed = JSON.parse(data.settings.customSections);
+            } catch (e) {}
+          }
+          setSettings((prev) => ({
+            ...prev,
+            ...data.settings,
+            customSections: Array.isArray(customParsed) ? customParsed : [],
+          }));
         }
       })
       .catch((err) => console.error("Failed to load settings:", err));
@@ -108,10 +119,10 @@ export default function HomePage() {
     setRecipesList(formatted);
   };
 
-  // 1. Filter by Meat Type (Meat vs Chicken vs All)
+  // 1. Filter by Main Section (Meat vs Chicken vs Custom Sections vs All)
   const meatFiltered = selectedMeatType === "all"
     ? recipesList
-    : recipesList.filter((r) => r.meatType === selectedMeatType);
+    : recipesList.filter((r) => r.meatType === selectedMeatType || r.category === selectedMeatType);
 
   // 2. Extract available subcategories for current meat type selection
   const availableCategories = Array.from(
@@ -210,6 +221,21 @@ export default function HomePage() {
             >
               🍗 {settings.chickenTabLabel} ({recipesList.filter(r => r.meatType === "chicken").length})
             </button>
+
+            {/* Custom Main Section Tabs added by Admin */}
+            {settings.customSections.map((sec) => (
+              <button
+                key={sec.id}
+                className={`doneness-tab ${selectedMeatType === sec.id ? "active" : ""}`}
+                onClick={() => {
+                  setSelectedMeatType(sec.id);
+                  setSelectedCategory("all");
+                }}
+                style={{ padding: "0.65rem 1.35rem", fontSize: "0.95rem", fontWeight: 800 }}
+              >
+                {sec.icon} {sec.name} ({recipesList.filter(r => r.meatType === sec.id || r.category === sec.id).length})
+              </button>
+            ))}
 
             <button
               className={`doneness-tab ${selectedMeatType === "all" ? "active" : ""}`}

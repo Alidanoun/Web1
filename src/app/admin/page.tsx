@@ -84,6 +84,9 @@ export default function AdminDashboard() {
   const [meatTabLabel, setMeatTabLabel] = useState("قسم اللحوم الحمراء");
   const [chickenTabLabel, setChickenTabLabel] = useState("قسم الدجاج والطيور");
   const [allTabLabel, setAllTabLabel] = useState("جميع الأصناف");
+  const [customSections, setCustomSections] = useState<{ id: string; name: string; icon: string }[]>([]);
+  const [newSectionName, setNewSectionName] = useState("");
+  const [newSectionIcon, setNewSectionIcon] = useState("🍽️");
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsSuccess, setSettingsSuccess] = useState(false);
 
@@ -187,6 +190,12 @@ export default function AdminDashboard() {
           if (data.settings.meatTabLabel) setMeatTabLabel(data.settings.meatTabLabel);
           if (data.settings.chickenTabLabel) setChickenTabLabel(data.settings.chickenTabLabel);
           if (data.settings.allTabLabel) setAllTabLabel(data.settings.allTabLabel);
+          if (data.settings.customSections) {
+            try {
+              const parsed = JSON.parse(data.settings.customSections);
+              if (Array.isArray(parsed)) setCustomSections(parsed);
+            } catch (e) {}
+          }
         }
       }
     } catch (err) {
@@ -221,6 +230,7 @@ export default function AdminDashboard() {
             meatTabLabel,
             chickenTabLabel,
             allTabLabel,
+            customSections: JSON.stringify(customSections),
           },
         }),
       });
@@ -1335,11 +1345,16 @@ export default function AdminDashboard() {
                   <select
                     className="form-input"
                     value={formMeatType}
-                    onChange={(e) => setFormMeatType(e.target.value as "meat" | "chicken")}
+                    onChange={(e) => setFormMeatType(e.target.value)}
                     style={{ background: "#111", color: "white", padding: "0.5rem", fontWeight: 700 }}
                   >
-                    <option value="meat">🥩 قسم اللحوم الحمراء (ستيك، كباب، ريش، برغر...)</option>
-                    <option value="chicken">🍗 قسم الدجاج والطيور (شيش طاووق، برغر دجاج...)</option>
+                    <option value="meat">🥩 {meatTabLabel}</option>
+                    <option value="chicken">🍗 {chickenTabLabel}</option>
+                    {customSections.map((sec) => (
+                      <option key={sec.id} value={sec.id}>
+                        {sec.icon} {sec.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -1681,6 +1696,76 @@ export default function AdminDashboard() {
                     placeholder="مثال: جميع الأصناف"
                     style={{ width: "100%", padding: "0.65rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white" }}
                   />
+                </div>
+              </div>
+
+              {/* Dynamic Custom Main Sections Controls */}
+              <div style={{ marginTop: "1.5rem", paddingTop: "1.25rem", borderTop: "1px dashed var(--color-border)" }}>
+                <h4 style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--color-brand-gold)", marginBottom: "0.5rem" }}>
+                  ➕ إضافة وتخصيص أقسام رئيسية جديدة للموقع:
+                </h4>
+                <p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", marginBottom: "1rem" }}>
+                  أضف هنا أي أقسام رئيسية جديدة تود عرضها كأزرار أساسية في أعلى الصفحة (مثل: قسم الأسماك والبحريات، قسم المشاوي، قسم السلطات وصواني الفرن... إلخ).
+                </p>
+
+                {/* Existing Custom Sections List */}
+                {customSections.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
+                    {customSections.map((sec, idx) => (
+                      <div key={sec.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.04)", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid var(--color-border)" }}>
+                        <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "white" }}>
+                          {sec.icon} {sec.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setCustomSections(customSections.filter((_, i) => i !== idx))}
+                          style={{ background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "6px", padding: "0.25rem 0.65rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: 700 }}
+                        >
+                          🗑️ حذف القسم
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add New Custom Section Input */}
+                <div style={{ background: "rgba(223, 138, 39, 0.05)", border: "1px dashed var(--color-brand-gold)", borderRadius: "10px", padding: "1rem" }}>
+                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "var(--color-brand-gold)", marginBottom: "0.5rem" }}>
+                    ✨ إنشاء قسم رئيسي جديد:
+                  </label>
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    <input
+                      type="text"
+                      placeholder="إيموجي (مثلاً 🐟)"
+                      value={newSectionIcon}
+                      onChange={(e) => setNewSectionIcon(e.target.value)}
+                      style={{ width: "90px", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white", textAlign: "center", fontSize: "1.1rem" }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="اسم القسم الجديد (مثال: قسم الأسماك والبحريات)"
+                      value={newSectionName}
+                      onChange={(e) => setNewSectionName(e.target.value)}
+                      style={{ flex: 1, minWidth: "180px", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white", fontSize: "0.85rem" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newSectionName.trim()) {
+                          alert("يرجى إدخال اسم القسم الجديد");
+                          return;
+                        }
+                        const id = "sec_" + Date.now();
+                        setCustomSections([...customSections, { id, name: newSectionName.trim(), icon: newSectionIcon || "🍽️" }]);
+                        setNewSectionName("");
+                        setNewSectionIcon("🍽️");
+                      }}
+                      className="btn-gold"
+                      style={{ padding: "0.6rem 1rem", fontSize: "0.85rem", width: "auto", animation: "none" }}
+                    >
+                      ➕ إضافة القسم
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
