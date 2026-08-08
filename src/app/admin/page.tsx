@@ -815,14 +815,14 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* TAB 3: QR CODE EXTRACTION & PRINTING FOR ALL 18 PRODUCTS */}
+      {/* TAB 3: QR CODE EXTRACTION & PRINTING */}
       {activeTab === "qr" && (
         <div className="animate-fade-in">
           <h3 style={{ fontWeight: 800, fontSize: "1.1rem", color: "white", marginBottom: "0.5rem" }}>
-            🖨️ استخراج وطباعة رموز الـ QR لجميع أصناف اللحوم الـ 18
+            🖨️ استخراج وطباعة رموز الـ QR
           </h3>
           <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)", marginBottom: "1.25rem" }}>
-            استخرج وحمّل رموز الـ QR عالية الدقة لكل عبوة وصنف من أصناف المركزية لطباعتها ولصقها على أطباق العبوات مباشرة.
+            استخرج وحمّل رمز الـ QR العام للموقع ورمز جمع نقاط الولاء لطباعتهما ولصقهما بالملحمة.
           </p>
 
           {/* Domain Host Input */}
@@ -843,17 +843,11 @@ export default function AdminDashboard() {
             </span>
           </div>
 
-          {/* All 18 Products + System QR Grid */}
-          <div className="grid-categories" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+          {/* System QR Grid */}
+          <div className="grid-categories" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
             {[
               { id: "home", title: "الرمز العام (الصفحة الرئيسية)", icon: "🏠", path: "/?source=qr" },
               { id: "loyalty", title: "رمز جمع نقاط الولاء (الملحمة)", icon: "🦁", path: "/collect?source=qr" },
-              ...productsList.map((p) => ({
-                id: p.id,
-                title: p.name,
-                icon: p.icon,
-                path: `/${p.id}?source=qr`,
-              })),
             ].map((prod) => {
               const fullUrl = `${domainHost.replace(/\/$/, "")}${prod.path}`;
               const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(fullUrl)}`;
