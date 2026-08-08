@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
-import { prisma, ensureTablesExist } from "@/lib/db";
-import { recipes as defaultRecipes } from "@/data/recipes";
+import { prisma, ensureTablesExist, runQuery } from "@/lib/db";
 
-// Helper to seed initial default recipes safely without deleting admin edits
-async function seedDefaultRecipesIfEmpty() {
-  for (const key of Object.keys(defaultRecipes)) {
-    const r = defaultRecipes[key];
-    const existing = await prisma.recipe.findUnique({ where: { id: r.id } });
-    if (!existing) {
-      await prisma.recipe.create({
-        data: {
+// GET /api/recipes - Fetch all recipes from DB
+export async function GET() {
+  try {
+    await ensureTablesExist();
+    const dbRecipes = await prisma.recipe.findMany();
+    if (dbRecipes && dbRecipes.length > 0) {
+      const formatted = dbRecipes.reduce((acc: Record<string, any>, r: any) => {
+        acc[r.id] = {
           id: r.id,
           title: r.title,
           category: r.category,
+          productId: r.productId || "",
+          icon: r.icon || "",
+          imageUrl: r.imageUrl || "",
           meatType: r.meatType || "meat",
           cuisine: r.cuisine || "arabic",
           description: r.description,
@@ -20,68 +22,31 @@ async function seedDefaultRecipesIfEmpty() {
           cookTime: r.cookTime,
           difficulty: r.difficulty,
           videoPlaceholder: r.videoPlaceholder,
-          videoUrl: r.videoUrl || "",
-          ingredients: JSON.stringify(r.ingredients),
-          instructions: JSON.stringify(r.instructions),
-          tips: JSON.stringify(r.tips),
+          videoUrl: r.videoUrl,
+          ingredients: JSON.parse(r.ingredients || "[]"),
+          instructions: JSON.parse(r.instructions || "[]"),
+          tips: JSON.parse(r.tips || "[]"),
           marinade: r.marinade,
-          doneness: r.doneness ? JSON.stringify(r.doneness) : null,
-        },
-      });
-    }
-  }
-}
-
-// GET /api/recipes - Fetch all recipes
-export async function GET() {
-  try {
-    await ensureTablesExist();
-    try {
-      await seedDefaultRecipesIfEmpty();
-      const dbRecipes = await prisma.recipe.findMany();
-      if (dbRecipes && dbRecipes.length > 0) {
-        const formatted = dbRecipes.reduce((acc: Record<string, any>, r: any) => {
-          acc[r.id] = {
-            id: r.id,
-            title: r.title,
-            category: r.category,
-            icon: r.icon || "",
-            imageUrl: r.imageUrl || "",
-            meatType: r.meatType || "meat",
-            cuisine: r.cuisine || "arabic",
-            description: r.description,
-            prepTime: r.prepTime,
-            cookTime: r.cookTime,
-            difficulty: r.difficulty,
-            videoPlaceholder: r.videoPlaceholder,
-            videoUrl: r.videoUrl,
-            ingredients: JSON.parse(r.ingredients || "[]"),
-            instructions: JSON.parse(r.instructions || "[]"),
-            tips: JSON.parse(r.tips || "[]"),
-            marinade: r.marinade,
-            doneness: r.doneness ? JSON.parse(r.doneness) : undefined,
-          };
-          return acc;
-        }, {} as Record<string, any>);
-        return NextResponse.json({ success: true, recipes: formatted }, { status: 200 });
-      }
-    } catch (dbErr) {
-      console.warn("DB fetch failed, using defaultRecipes fallback:", dbErr);
+          doneness: r.doneness ? JSON.parse(r.doneness) : undefined,
+        };
+        return acc;
+      }, {} as Record<string, any>);
+      return NextResponse.json({ success: true, recipes: formatted }, { status: 200 });
     }
 
-    return NextResponse.json({ success: true, recipes: defaultRecipes }, { status: 200 });
+    return NextResponse.json({ success: true, recipes: {} }, { status: 200 });
   } catch (error) {
     console.error("Error fetching recipes:", error);
-    return NextResponse.json({ success: true, recipes: defaultRecipes }, { status: 200 });
+    return NextResponse.json({ success: true, recipes: {} }, { status: 200 });
   }
 }
 
-// PUT /api/recipes - Create or Update a recipe & category
+// PUT /api/recipes - Create or Update a recipe
 export async function PUT(req: Request) {
   try {
     await ensureTablesExist();
     const body = await req.json();
-    const { id, title, category, icon, imageUrl, meatType, cuisine, description, prepTime, cookTime, difficulty, videoUrl, ingredients, instructions, tips, marinade, recommendedWeights } = body;
+    const { id, title, category, productId, icon, imageUrl, meatType, cuisine, description, prepTime, cookTime, difficulty, videoUrl, ingredients, instructions, tips, marinade } = body;
 
     if (!id || !title) {
       return NextResponse.json({ error: "معرف الوصفة والعنوان مطلوبان" }, { status: 400 });
@@ -94,6 +59,7 @@ export async function PUT(req: Request) {
       update: {
         title,
         category: category || cleanId,
+        productId: productId || "",
         icon: icon || "",
         imageUrl: imageUrl || "",
         meatType: meatType === "chicken" ? "chicken" : "meat",
@@ -107,12 +73,12 @@ export async function PUT(req: Request) {
         instructions: Array.isArray(instructions) ? JSON.stringify(instructions) : (typeof instructions === "string" ? JSON.stringify(instructions.split("\n").filter(Boolean)) : JSON.stringify([])),
         tips: Array.isArray(tips) ? JSON.stringify(tips) : (typeof tips === "string" ? JSON.stringify(tips.split("\n").filter(Boolean)) : JSON.stringify([])),
         marinade: marinade || "",
-        recommendedWeights: recommendedWeights ? JSON.stringify(recommendedWeights) : null,
       },
       create: {
         id: cleanId,
         title,
         category: category || cleanId,
+        productId: productId || "",
         icon: icon || "",
         imageUrl: imageUrl || "",
         meatType: meatType === "chicken" ? "chicken" : "meat",
@@ -127,7 +93,6 @@ export async function PUT(req: Request) {
         instructions: Array.isArray(instructions) ? JSON.stringify(instructions) : (typeof instructions === "string" ? JSON.stringify(instructions.split("\n").filter(Boolean)) : JSON.stringify([])),
         tips: Array.isArray(tips) ? JSON.stringify(tips) : (typeof tips === "string" ? JSON.stringify(tips.split("\n").filter(Boolean)) : JSON.stringify([])),
         marinade: marinade || "",
-        recommendedWeights: recommendedWeights ? JSON.stringify(recommendedWeights) : null,
       },
     });
 
@@ -135,5 +100,24 @@ export async function PUT(req: Request) {
   } catch (error) {
     console.error("Error updating recipe:", error);
     return NextResponse.json({ error: "فشل حفظ أو تحديث الوصفة" }, { status: 500 });
+  }
+}
+
+// DELETE /api/recipes - Delete a recipe by ID
+export async function DELETE(req: Request) {
+  try {
+    await ensureTablesExist();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "معرف الوصفة مطلوب للحذف" }, { status: 400 });
+    }
+
+    await runQuery(`DELETE FROM "Recipe" WHERE "id"=$1`, [id]);
+    return NextResponse.json({ success: true, message: "تم حذف الوصفة بنجاح" }, { status: 200 });
+  } catch (error) {
+    console.error("Error deleting recipe:", error);
+    return NextResponse.json({ error: "فشل حذف الوصفة" }, { status: 500 });
   }
 }

@@ -249,6 +249,7 @@ export default function AdminDashboard() {
         alert("تم إعادة ضبط البيانات بنجاح!");
         fetchStats();
         fetchProducts();
+        fetchRecipes();
       } else {
         alert("فشل إعادة ضبط البيانات.");
       }
@@ -257,6 +258,21 @@ export default function AdminDashboard() {
       alert("خطأ بالاتصال.");
     } finally {
       setSeedLoading(false);
+    }
+  };
+
+  const handleDeleteRecipe = async (id: string) => {
+    if (!confirm("⚠️ هل أنت تأكد من رغبتك في حذف هذه الوصفة؟")) return;
+    try {
+      const res = await fetch(`/api/recipes?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (res.ok) {
+        await fetchRecipes();
+      } else {
+        alert("فشل حذف الوصفة.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("خطأ بالاتصال.");
     }
   };
 
@@ -775,13 +791,22 @@ export default function AdminDashboard() {
                       </p>
                     </div>
 
-                    <button
-                      className="btn-gold"
-                      onClick={() => openRecipeEditor(r)}
-                      style={{ fontSize: "0.85rem", padding: "0.6rem" }}
-                    >
-                      ✏️ تعديل الوصفة والفيديو
-                    </button>
+                    <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
+                      <button
+                        className="btn-gold"
+                        onClick={() => openRecipeEditor(r)}
+                        style={{ fontSize: "0.85rem", padding: "0.5rem 0.85rem", flex: 1 }}
+                      >
+                        ✏️ تعديل
+                      </button>
+                      <button
+                        className="btn-outline"
+                        onClick={() => handleDeleteRecipe(r.id)}
+                        style={{ fontSize: "0.85rem", padding: "0.5rem 0.85rem", borderColor: "rgba(239, 68, 68, 0.4)", color: "#f87171" }}
+                      >
+                        🗑️ حذف
+                      </button>
+                    </div>
                   </div>
                 );
               })
