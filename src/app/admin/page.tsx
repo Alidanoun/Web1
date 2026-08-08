@@ -328,6 +328,14 @@ export default function AdminDashboard() {
     openRecipeEditor(blankRecipe);
   };
 
+  const parseSmartTextList = (rawText: string): string[] => {
+    if (!rawText || !rawText.trim()) return [];
+    return rawText
+      .split(/\n|\n\r|;|•|–|—/)
+      .map((item) => item.replace(/^[\s\d\.\)\-\*•\–\—]+/g, "").trim())
+      .filter((item) => item.length > 0);
+  };
+
   const handleSaveRecipe = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingRecipe) return;
@@ -336,10 +344,9 @@ export default function AdminDashboard() {
     setSaveSuccess(false);
 
     try {
-      const parsedIngredients = formIngredients
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const parsedIngredients = parseSmartTextList(formIngredients);
+      const parsedInstructions = parseSmartTextList(formInstructions);
+      const parsedTips = parseSmartTextList(formTips);
 
       const updatedData = {
         id: formId ? formId.trim().toLowerCase().replace(/[^a-z0-9-_]/g, "") : ("recipe_" + Date.now()),
@@ -354,8 +361,8 @@ export default function AdminDashboard() {
         difficulty: editingRecipe.difficulty || "سهل",
         videoUrl: formVideoUrl,
         ingredients: parsedIngredients,
-        instructions: formInstructions.split("\n").map((s) => s.trim()).filter(Boolean),
-        tips: formTips.split("\n").map((s) => s.trim()).filter(Boolean),
+        instructions: parsedInstructions,
+        tips: parsedTips,
         marinade: formMarinade,
         cuisine: formCuisine,
       };
@@ -1237,38 +1244,72 @@ export default function AdminDashboard() {
 
               {/* Ingredients */}
               <div className="form-group">
-                <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
-                  📋 المكونات والمقادير الكاملة (مكون واحد في كل سطر):
-                </label>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
+                  <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700, margin: 0 }}>
+                    📋 المكونات والمقادير:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormIngredients(parseSmartTextList(formIngredients).join("\n"))}
+                    style={{ background: "rgba(223, 138, 39, 0.15)", border: "1px solid var(--color-brand-gold)", color: "white", borderRadius: "6px", padding: "0.2rem 0.6rem", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    ✨ ترتيب وتنظيف تلقائي
+                  </button>
+                </div>
                 <textarea
                   className="form-input"
                   rows={5}
                   value={formIngredients}
                   onChange={(e) => setFormIngredients(e.target.value)}
+                  placeholder="انسخ والصق أي نص أو قائمة (من الواتساب أو ChatGPT أو Word)، واضغط 'ترتيب تلقائي' ليتم تقسيمها وتنظيفها فوراً..."
                   style={{ resize: "vertical" }}
                 />
               </div>
 
               {/* Instructions */}
               <div className="form-group">
-                <label className="form-label">خطوات التحضير والطهي (خطوة واحدة في كل سطر):</label>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
+                  <label className="form-label" style={{ color: "white", fontWeight: 700, margin: 0 }}>
+                    🍳 خطوات التحضير والطهي:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormInstructions(parseSmartTextList(formInstructions).join("\n"))}
+                    style={{ background: "rgba(255, 255, 255, 0.08)", border: "1px solid var(--color-border)", color: "white", borderRadius: "6px", padding: "0.2rem 0.6rem", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    ✨ ترتيب وتنظيف تلقائي
+                  </button>
+                </div>
                 <textarea
                   className="form-input"
                   rows={5}
                   value={formInstructions}
                   onChange={(e) => setFormInstructions(e.target.value)}
+                  placeholder="انسخ والصق الخطوات هنا، واضغط 'ترتيب تلقائي'..."
                   style={{ resize: "vertical" }}
                 />
               </div>
 
               {/* Tips */}
               <div className="form-group">
-                <label className="form-label">نصائح الطاهي الذهبية (نصيحة واحدة في كل سطر):</label>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
+                  <label className="form-label" style={{ color: "white", fontWeight: 700, margin: 0 }}>
+                    💡 نصائح الطاهي الذهبية:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormTips(parseSmartTextList(formTips).join("\n"))}
+                    style={{ background: "rgba(255, 255, 255, 0.08)", border: "1px solid var(--color-border)", color: "white", borderRadius: "6px", padding: "0.2rem 0.6rem", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    ✨ ترتيب وتنظيف تلقائي
+                  </button>
+                </div>
                 <textarea
                   className="form-input"
                   rows={3}
                   value={formTips}
                   onChange={(e) => setFormTips(e.target.value)}
+                  placeholder="انسخ والصق النصائح هنا..."
                   style={{ resize: "vertical" }}
                 />
               </div>
