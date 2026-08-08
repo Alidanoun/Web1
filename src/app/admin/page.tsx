@@ -1128,7 +1128,7 @@ export default function AdminDashboard() {
           <div
             className="modal-content animate-slide-up"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: "650px", maxHeight: "90vh", overflowY: "auto" }}
+            style={{ maxWidth: "680px", width: "100%", margin: "auto" }}
           >
             <button className="modal-close" onClick={() => setEditingRecipe(null)}>
               &times;
