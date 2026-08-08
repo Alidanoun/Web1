@@ -14,6 +14,7 @@ interface Lead {
 interface Scan {
   id: string;
   product: string;
+  source?: string;
   createdAt: string;
 }
 
@@ -34,11 +35,21 @@ interface StatsData {
   dbError: string | null;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  weight: string;
+  icon: string;
+  imageUrl?: string;
+  sortOrder: number;
+}
+
 interface RecipeData {
   id: string;
   title: string;
   category: string;
   meatType?: "meat" | "chicken";
+  productId?: string;
   description: string;
   prepTime: string;
   cookTime: string;
@@ -52,19 +63,28 @@ interface RecipeData {
   tips: string[];
   marinade: string;
   cuisine?: string;
-  recommendedWeights?: any;
 }
 
-interface PackageData {
-  id: string;
-  name: string;
-  description: string;
-  kebab: string;
-  ribs: string;
-  burger: string;
-  steak: string;
-  notes: string;
-}
+const STATIC_PRODUCTS: Product[] = [
+  { id: "katef-kharouf", name: "كتف خاروف بلدي", weight: "", icon: "🐑", sortOrder: 1 },
+  { id: "lahma-mafrouma-khashna", name: "لحمه مفرومه خشنه طازجه", weight: "", icon: "🥩", sortOrder: 2 },
+  { id: "lahma-mafrouma-naema", name: "لحمه مفرومه ناعمه طازجه", weight: "", icon: "🥩", sortOrder: 3 },
+  { id: "lahma-mafrouma-ejel", name: "لحمه مفرومه عجل مع خاروف بلدي طازج", weight: "", icon: "🥩", sortOrder: 4 },
+  { id: "ras-asfour", name: "راس عصفور عجل طازج", weight: "", icon: "🍖", sortOrder: 5 },
+  { id: "ribs", name: "ريش خارووف طازج", weight: "", icon: "🍖", sortOrder: 6 },
+  { id: "burger", name: "برغر لحم طازج", weight: "", icon: "🍔", sortOrder: 7 },
+  { id: "chinese", name: "تشاينيز عجل طازج", weight: "", icon: "🥘", sortOrder: 8 },
+  { id: "ribeye-steak", name: "رب اي ستيك", weight: "", icon: "🥩", sortOrder: 9 },
+  { id: "kofta", name: "كفته لحم عجل مع خروف", weight: "", icon: "🥘", sortOrder: 10 },
+  { id: "filet-steak", name: "ستيك فيليه طازج", weight: "", icon: "🥩", sortOrder: 11 },
+  { id: "liyeh", name: "ليه خاروف بلدي", weight: "", icon: "🐑", sortOrder: 12 },
+  { id: "sausage", name: "سجق لحم بقري بلدي", weight: "", icon: "🌭", sortOrder: 13 },
+  { id: "fakheth-kharouf", name: "فخذ خاروف بلدي", weight: "", icon: "🐑", sortOrder: 14 },
+  { id: "adla3", name: "اضلاع خاروف بلدي", weight: "", icon: "🍖", sortOrder: 15 },
+  { id: "burger-box", name: "برغر بوكس", weight: "", icon: "📦", sortOrder: 16 },
+  { id: "shish-box", name: "شيش بوكس", weight: "", icon: "📦", sortOrder: 17 },
+  { id: "kebab-box", name: "كباب بوكس", weight: "", icon: "📦", sortOrder: 18 },
+];
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<"stats" | "recipes" | "qr" | "settings" | "loyalty">("stats");
@@ -72,6 +92,7 @@ export default function AdminDashboard() {
   const [loyaltyCards, setLoyaltyCards] = useState<any[]>([]);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [productsList, setProductsList] = useState<Product[]>(STATIC_PRODUCTS);
   const [recipes, setRecipes] = useState<Record<string, RecipeData>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -81,21 +102,14 @@ export default function AdminDashboard() {
   // Site Settings State
   const [siteTitle, setSiteTitle] = useState("ملاحم ومطاعم المركزية");
   const [siteSubtitle, setSiteSubtitle] = useState("اختر صنف اللحوم أو الدجاج المفضل لديك واكتشف أسرار تتبيل وطهي أصنافنا الفاخرة.");
-  const [meatTabLabel, setMeatTabLabel] = useState("قسم اللحوم الحمراء");
-  const [chickenTabLabel, setChickenTabLabel] = useState("قسم الدجاج والطيور");
-  const [allTabLabel, setAllTabLabel] = useState("جميع الأصناف");
-  const [customSections, setCustomSections] = useState<{ id: string; name: string; icon: string }[]>([]);
-  const [newSectionName, setNewSectionName] = useState("");
-  const [newSectionIcon, setNewSectionIcon] = useState("🍽️");
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsSuccess, setSettingsSuccess] = useState(false);
 
-  // Performance table search, filter, sort & pagination state
+  // Performance table search, sort & pagination state
   const [perfSearch, setPerfSearch] = useState("");
-  const [perfTypeFilter, setPerfTypeFilter] = useState<"all" | "meat" | "chicken">("all");
   const [perfSortBy, setPerfSortBy] = useState<"scans" | "rating" | "title">("scans");
   const [perfPage, setPerfPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 8;
 
   // Recipe editing state
   const [editingRecipe, setEditingRecipe] = useState<RecipeData | null>(null);
@@ -110,44 +124,14 @@ export default function AdminDashboard() {
   const [formVideoUrl, setFormVideoUrl] = useState("");
   const [formId, setFormId] = useState("");
   const [formCuisine, setFormCuisine] = useState("arabic");
-  const [formMeatType, setFormMeatType] = useState<"meat" | "chicken">("meat");
-  const [formCategory, setFormCategory] = useState("ستيك");
+  const [formProductId, setFormProductId] = useState("");
+  const [formCategory, setFormCategory] = useState("عام");
   const [formIcon, setFormIcon] = useState("");
   const [formImageUrl, setFormImageUrl] = useState("");
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [formIngredients, setFormIngredients] = useState("");
   const [formInstructions, setFormInstructions] = useState("");
   const [formTips, setFormTips] = useState("");
   const [formMarinade, setFormMarinade] = useState("");
-
-  const resizeImage = (file: File, maxWidth = 1200, quality = 0.8): Promise<Blob> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(img.src);
-        let width = img.width;
-        let height = img.height;
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(
-          (blob) => {
-            resolve(blob || file);
-          },
-          "image/jpeg",
-          quality
-        );
-      };
-      img.onerror = () => resolve(file);
-    });
-  };
 
   const fetchStats = async () => {
     try {
@@ -162,6 +146,20 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error("Error fetching stats:", err);
       setError("حدث خطأ أثناء الاتصال بالخادم.");
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch("/api/products");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+          setProductsList(data.products);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching products:", err);
     }
   };
 
@@ -187,15 +185,6 @@ export default function AdminDashboard() {
         if (data.settings) {
           if (data.settings.siteTitle) setSiteTitle(data.settings.siteTitle);
           if (data.settings.siteSubtitle) setSiteSubtitle(data.settings.siteSubtitle);
-          if (data.settings.meatTabLabel) setMeatTabLabel(data.settings.meatTabLabel);
-          if (data.settings.chickenTabLabel) setChickenTabLabel(data.settings.chickenTabLabel);
-          if (data.settings.allTabLabel) setAllTabLabel(data.settings.allTabLabel);
-          if (data.settings.customSections) {
-            try {
-              const parsed = JSON.parse(data.settings.customSections);
-              if (Array.isArray(parsed)) setCustomSections(parsed);
-            } catch (e) {}
-          }
         }
       }
     } catch (err) {
@@ -227,10 +216,6 @@ export default function AdminDashboard() {
           settings: {
             siteTitle,
             siteSubtitle,
-            meatTabLabel,
-            chickenTabLabel,
-            allTabLabel,
-            customSections: JSON.stringify(customSections),
           },
         }),
       });
@@ -252,7 +237,7 @@ export default function AdminDashboard() {
     if (typeof window !== "undefined" && window.location.origin) {
       setDomainHost(window.location.origin);
     }
-    Promise.all([fetchStats(), fetchRecipes(), fetchSettings()]).then(() => setLoading(false));
+    Promise.all([fetchStats(), fetchProducts(), fetchRecipes(), fetchSettings()]).then(() => setLoading(false));
     fetchLoyaltyCards();
   }, []);
 
@@ -261,10 +246,11 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/seed", { method: "POST" });
       if (res.ok) {
-        alert("تم تعبئة البيانات التجريبية بنجاح!");
+        alert("تم إعادة ضبط البيانات بنجاح!");
         fetchStats();
+        fetchProducts();
       } else {
-        alert("فشل تعبئة البيانات.");
+        alert("فشل إعادة ضبط البيانات.");
       }
     } catch (err) {
       console.error(err);
@@ -278,8 +264,8 @@ export default function AdminDashboard() {
     setEditingRecipe(recipe);
     setFormId(recipe.id);
     setFormTitle(recipe.title);
-    setFormCategory(recipe.category || "ستيك");
-    setFormMeatType(recipe.meatType || "meat");
+    setFormCategory(recipe.category || "عام");
+    setFormProductId(recipe.productId || "");
     setFormDesc(recipe.description);
     setFormPrep(recipe.prepTime);
     setFormCook(recipe.cookTime);
@@ -307,8 +293,8 @@ export default function AdminDashboard() {
     const blankRecipe: RecipeData = {
       id: "",
       title: "",
-      category: "جديد",
-      meatType: "meat",
+      category: "عام",
+      productId: productsList[0]?.id || "katef-kharouf",
       description: "",
       prepTime: "15 دقيقة",
       cookTime: "10 دقائق",
@@ -343,9 +329,9 @@ export default function AdminDashboard() {
         id: formId ? formId.trim().toLowerCase().replace(/[^a-z0-9-_]/g, "") : ("recipe_" + Date.now()),
         title: formTitle,
         category: formCategory || "عام",
+        productId: formProductId || "",
         icon: formIcon,
         imageUrl: formImageUrl,
-        meatType: formMeatType || "meat",
         description: formDesc,
         prepTime: formPrep,
         cookTime: formCook,
@@ -366,7 +352,7 @@ export default function AdminDashboard() {
 
       if (res.ok) {
         setSaveSuccess(true);
-        await fetchRecipes(); // refresh recipes list
+        await fetchRecipes();
         setTimeout(() => {
           setEditingRecipe(null);
         }, 1200);
@@ -381,8 +367,6 @@ export default function AdminDashboard() {
       setSavingRecipe(false);
     }
   };
-
-
 
   if (loading) {
     return (
@@ -418,21 +402,21 @@ export default function AdminDashboard() {
           onClick={() => setActiveTab("recipes")}
           style={{ fontSize: "0.95rem", padding: "0.6rem 1.25rem" }}
         >
-          🎬 التعديل على الوصفات والفيديوهات
+          🎬 إدارة الوصفات والفيديوهات
         </button>
         <button
           className={`doneness-tab ${activeTab === "qr" ? "active" : ""}`}
           onClick={() => setActiveTab("qr")}
           style={{ fontSize: "0.95rem", padding: "0.6rem 1.25rem" }}
         >
-          🖨️ استخراج وطباعة رموز الـ QR
+          🖨️ استخراج وطباعة رموز الـ QR للعبوات
         </button>
         <button
           className={`doneness-tab ${activeTab === "settings" ? "active" : ""}`}
           onClick={() => setActiveTab("settings")}
           style={{ fontSize: "0.95rem", padding: "0.6rem 1.25rem" }}
         >
-          ⚙️ إعدادات أسماء الموقع والأقسام
+          ⚙️ إعدادات الموقع
         </button>
         <button
           className={`doneness-tab ${activeTab === "loyalty" ? "active" : ""}`}
@@ -443,7 +427,7 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {error && <div className="card" style={{ color: "var(--color-danger)", textAlign: "center", fontWeight: 700 }}>{error}</div>}
+      {error && <div className="card" style={{ color: "var(--color-danger)", textAlign: "center", fontWeight: 700, marginBottom: "1rem" }}>{error}</div>}
 
       {/* DB Connection Status Banner */}
       {stats && (
@@ -465,7 +449,7 @@ export default function AdminDashboard() {
           <span style={{ color: stats.dbConnected ? "var(--color-success)" : "#f87171", wordBreak: "break-word" }}>
             {stats.dbConnected
               ? "قاعدة البيانات متصلة — البيانات حقيقية من الداتابيز"
-              : `قاعدة البيانات غير متصلة: ${stats.dbError || "تحقق من DATABASE_URL في Cloudflare"}`}
+              : `قاعدة البيانات غير متصلة: ${stats.dbError || "تحقق من DATABASE_URL"}`}
           </span>
           <button
             onClick={fetchStats}
@@ -479,7 +463,7 @@ export default function AdminDashboard() {
       {/* TAB 1: ANALYTICS DASHBOARD */}
       {activeTab === "stats" && stats && (
         <div>
-          {/* Main Counters Grid (5 columns / responsive grid) */}
+          {/* Main Counters Grid */}
           <div className="grid-categories" style={{ marginBottom: "1.25rem", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
             {/* Dedicated QR Scans Card */}
             <div className="card card-gold-border" style={{ padding: "1rem", textAlign: "center", marginBottom: 0, background: "linear-gradient(135deg, rgba(223,138,39,0.15) 0%, rgba(20,16,12,0.9) 100%)" }}>
@@ -518,7 +502,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Production Real Data Actions */}
+          {/* Production Actions */}
           <div
             style={{
               display: "flex",
@@ -528,7 +512,6 @@ export default function AdminDashboard() {
               flexWrap: "wrap",
             }}
           >
-            {/* Export Leads Excel */}
             <a
               href="/api/export-leads"
               download
@@ -541,13 +524,12 @@ export default function AdminDashboard() {
                 textDecoration: "none",
               }}
             >
-              📥 تصدير قائمة العملاء إلى ملف Excel مرتب
+              📥 تصدير قائمة العملاء إلى ملف Excel
             </a>
 
-            {/* Clear/Reset Data for Real Launch */}
             <button
               onClick={() => {
-                if (confirm("⚠️ هل أنت تأكد من رغبتك في تصفير وإعادة ضبط كافة بيانات المسح والتقييمات والعملاء للبدء الحقيقي؟")) {
+                if (confirm("⚠️ هل أنت تأكد من رغبتك في إعادة ضبط بيانات المسح والتجربة؟")) {
                   handleSeed();
                 }
               }}
@@ -560,292 +542,148 @@ export default function AdminDashboard() {
                 color: "#f87171",
               }}
             >
-              🔄 {seedLoading ? "جاري التصفير..." : "تصفير البيانات للبدء الحقيقي"}
+              🔄 {seedLoading ? "جاري الإعادة..." : "تصفير البيانات وإعادة الضبط"}
             </button>
           </div>
 
-          {/* Product & Platform Cards side-by-side on Desktop */}
-          <div className="grid-two-column">
-            {/* Product Performance Card */}
-            <div className="card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
-                  <h3 style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--color-brand-gold)", margin: 0 }}>
-                    📊 أداء المنتجات والوصفات
-                  </h3>
-                  <span style={{ fontSize: "0.72rem", color: "var(--color-text-muted)", background: "rgba(255,255,255,0.05)", padding: "0.2rem 0.6rem", borderRadius: "10px" }}>
-                    إجمالي المنتجات: {Object.keys(recipes).length + 2}
-                  </span>
-                </div>
-
-                {/* Search Bar & Filter Controls */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "0.75rem" }}>
-                  {/* Search Input */}
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="🔍 ابحث عن اسم وصفة أو طبق..."
-                    value={perfSearch}
-                    onChange={(e) => {
-                      setPerfSearch(e.target.value);
-                      setPerfPage(1);
-                    }}
-                    style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem", background: "#111" }}
-                  />
-
-                  {/* Filter Pills & Sort Selector */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
-                    {/* Filter Pills */}
-                    <div style={{ display: "flex", gap: "0.3rem" }}>
-                      <button
-                        onClick={() => { setPerfTypeFilter("all"); setPerfPage(1); }}
-                        style={{
-                          background: perfTypeFilter === "all" ? "var(--color-brand-gold)" : "rgba(255,255,255,0.05)",
-                          color: perfTypeFilter === "all" ? "white" : "var(--color-text-muted)",
-                          border: "none",
-                          borderRadius: "12px",
-                          padding: "0.25rem 0.65rem",
-                          fontSize: "0.72rem",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        الكل
-                      </button>
-                      <button
-                        onClick={() => { setPerfTypeFilter("meat"); setPerfPage(1); }}
-                        style={{
-                          background: perfTypeFilter === "meat" ? "var(--color-brand-gold)" : "rgba(255,255,255,0.05)",
-                          color: perfTypeFilter === "meat" ? "white" : "var(--color-text-muted)",
-                          border: "none",
-                          borderRadius: "12px",
-                          padding: "0.25rem 0.65rem",
-                          fontSize: "0.72rem",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        🥩 لحوم
-                      </button>
-                      <button
-                        onClick={() => { setPerfTypeFilter("chicken"); setPerfPage(1); }}
-                        style={{
-                          background: perfTypeFilter === "chicken" ? "var(--color-brand-gold)" : "rgba(255,255,255,0.05)",
-                          color: perfTypeFilter === "chicken" ? "white" : "var(--color-text-muted)",
-                          border: "none",
-                          borderRadius: "12px",
-                          padding: "0.25rem 0.65rem",
-                          fontSize: "0.72rem",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        🍗 دجاج
-                      </button>
-                    </div>
-
-                    {/* Sort Selector */}
-                    <select
-                      className="form-input"
-                      value={perfSortBy}
-                      onChange={(e) => { setPerfSortBy(e.target.value as any); setPerfPage(1); }}
-                      style={{ padding: "0.2rem 0.5rem", fontSize: "0.72rem", background: "#111", color: "white", width: "auto" }}
-                    >
-                      <option value="scans">🔝 الأكثر زيارة ودخولاً</option>
-                      <option value="rating">⭐ الأعلى تقييماً</option>
-                      <option value="title">🔤 اسم الوصفة</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Table Container */}
-                <div className="admin-table-container">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>المنتج / الوصفة</th>
-                        <th style={{ color: "var(--color-brand-gold)" }}>مرات دخول العملاء</th>
-                        <th>التقييم</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        const allKeys = Array.from(
-                          new Set([
-                            "home",
-                            "loyalty",
-                            ...Object.keys(recipes),
-                            ...Object.keys(stats.scans || {}),
-                          ])
-                        );
-
-                        // 1. Build structured items
-                        let items = allKeys.map((pKey) => {
-                          let label = pKey;
-                          let meatType: "meat" | "chicken" | "system" = "system";
-
-                          if (pKey === "home") {
-                            label = "🏠 الرمز العام (الصفحة الرئيسية)";
-                          } else if (pKey === "loyalty") {
-                            label = "🦁 رمز جمع نقاط الولاء (الملحمة)";
-                          } else if (recipes[pKey]) {
-                            meatType = recipes[pKey].meatType === "chicken" ? "chicken" : "meat";
-                            label = (meatType === "chicken" ? "🍗 " : "🥩 ") + recipes[pKey].title;
-                          }
-
-                          const scanCount = stats.scans[pKey] || 0;
-                          const ratingInfo = stats.ratings[pKey] || { count: 0, avg: 0 };
-
-                          return {
-                            id: pKey,
-                            label,
-                            meatType,
-                            scanCount,
-                            ratingAvg: ratingInfo.avg,
-                            ratingCount: ratingInfo.count,
-                          };
-                        });
-
-                        // 2. Filter by search query
-                        if (perfSearch.trim()) {
-                          const q = perfSearch.trim().toLowerCase();
-                          items = items.filter((it) => it.label.toLowerCase().includes(q) || it.id.toLowerCase().includes(q));
-                        }
-
-                        // 3. Filter by Meat / Chicken type
-                        if (perfTypeFilter !== "all") {
-                          items = items.filter((it) => it.meatType === perfTypeFilter || it.meatType === "system");
-                        }
-
-                        // 4. Sort
-                        if (perfSortBy === "scans") {
-                          items.sort((a, b) => b.scanCount - a.scanCount);
-                        } else if (perfSortBy === "rating") {
-                          items.sort((a, b) => b.ratingAvg - a.ratingAvg);
-                        } else if (perfSortBy === "title") {
-                          items.sort((a, b) => a.label.localeCompare(b.label, "ar"));
-                        }
-
-                        // 5. Paginate
-                        const totalPages = Math.ceil(items.length / itemsPerPage) || 1;
-                        const currentPage = Math.min(perfPage, totalPages);
-                        const startIndex = (currentPage - 1) * itemsPerPage;
-                        const paginatedItems = items.slice(startIndex, startIndex + itemsPerPage);
-
-                        if (items.length === 0) {
-                          return (
-                            <tr>
-                              <td colSpan={3} style={{ textAlign: "center", color: "var(--color-text-muted)", fontSize: "0.8rem", padding: "1.5rem" }}>
-                                لا توجد نتائج مطابقة للبحث أو الفلتر.
-                              </td>
-                            </tr>
-                          );
-                        }
-
-                        return paginatedItems.map((item) => (
-                          <tr key={item.id}>
-                            <td style={{ fontWeight: 700, color: "white", fontSize: "0.82rem", maxWidth: "220px", wordBreak: "break-word" }}>
-                              {item.label}
-                            </td>
-                            <td style={{ fontWeight: 800, color: item.scanCount > 0 ? "var(--color-brand-gold)" : "white", fontSize: "0.85rem" }}>
-                              {item.scanCount} زيارة
-                            </td>
-                            <td>
-                              {item.ratingCount > 0 ? (
-                                <span style={{ color: "var(--color-brand-gold)", fontWeight: 700, fontSize: "0.8rem" }}>
-                                  {"★".repeat(Math.round(item.ratingAvg))} ({item.ratingAvg})
-                                </span>
-                              ) : (
-                                <span style={{ color: "var(--color-text-muted)", fontSize: "0.72rem" }}>
-                                  لا توجد تقييمات
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Pagination Controls */}
-              {(() => {
-                const allKeysCount = Array.from(
-                  new Set([
-                    "home",
-                    "loyalty",
-                    ...Object.keys(recipes),
-                    ...Object.keys(stats.scans || {}),
-                  ])
-                ).length;
-                const totalPages = Math.ceil(allKeysCount / itemsPerPage) || 1;
-
-                return (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.75rem", paddingTop: "0.5rem", borderTop: "1px dashed var(--color-border)" }}>
-                    <button
-                      disabled={perfPage <= 1}
-                      onClick={() => setPerfPage((p) => Math.max(1, p - 1))}
-                      style={{
-                        background: perfPage <= 1 ? "transparent" : "rgba(223, 138, 39, 0.15)",
-                        color: perfPage <= 1 ? "var(--color-text-muted)" : "var(--color-brand-gold)",
-                        border: "1px solid rgba(223, 138, 39, 0.3)",
-                        borderRadius: "6px",
-                        padding: "0.25rem 0.65rem",
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                        cursor: perfPage <= 1 ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      السابق ➔
-                    </button>
-
-                    <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", fontWeight: 700 }}>
-                      صفحة {perfPage} من {totalPages}
-                    </span>
-
-                    <button
-                      disabled={perfPage >= totalPages}
-                      onClick={() => setPerfPage((p) => Math.min(totalPages, p + 1))}
-                      style={{
-                        background: perfPage >= totalPages ? "transparent" : "rgba(223, 138, 39, 0.15)",
-                        color: perfPage >= totalPages ? "var(--color-text-muted)" : "var(--color-brand-gold)",
-                        border: "1px solid rgba(223, 138, 39, 0.3)",
-                        borderRadius: "6px",
-                        padding: "0.25rem 0.65rem",
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                        cursor: perfPage >= totalPages ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      ← التالي
-                    </button>
-                  </div>
-                );
-              })()}
+          {/* Performance Table */}
+          <div className="card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
+              <h3 style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--color-brand-gold)", margin: 0 }}>
+                📊 أداء زيارات أصناف اللحوم والصفحات
+              </h3>
+              <span style={{ fontSize: "0.72rem", color: "var(--color-text-muted)", background: "rgba(255,255,255,0.05)", padding: "0.2rem 0.6rem", borderRadius: "10px" }}>
+                إجمالي الأصناف: {productsList.length}
+              </span>
             </div>
 
-            {/* Platform Performance Card */}
-            <div className="card">
-              <h3 style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--color-brand-gold)", marginBottom: "0.75rem" }}>
-                📞 نقرات الاتصال بخدمة العملاء المباشرة
-              </h3>
-              <div className="platforms-grid" style={{ gridTemplateColumns: "1fr" }}>
-                <div style={{ textAlign: "center", padding: "0.75rem" }}>
-                  <span style={{ fontSize: "1.6rem", display: "block" }}>📞</span>
-                  <span style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", display: "block", margin: "0.35rem 0" }}>نقرات الاتصال الهاتفي المباشر</span>
-                  <strong style={{ fontSize: "1.5rem", display: "block", color: "white" }}>{stats.clicks.phone || 0}</strong>
-                </div>
-              </div>
+            {/* Search Bar & Sort Selector */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="🔍 ابحث عن صنف لحم..."
+                value={perfSearch}
+                onChange={(e) => {
+                  setPerfSearch(e.target.value);
+                  setPerfPage(1);
+                }}
+                style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem", background: "#111", flex: 1, minWidth: "200px" }}
+              />
+
+              <select
+                className="form-input"
+                value={perfSortBy}
+                onChange={(e) => { setPerfSortBy(e.target.value as any); setPerfPage(1); }}
+                style={{ padding: "0.4rem 0.75rem", fontSize: "0.78rem", background: "#111", color: "white", width: "auto" }}
+              >
+                <option value="scans">🔝 الأكثر زيارة ودخولاً</option>
+                <option value="rating">⭐ الأعلى تقييماً</option>
+                <option value="title">🔤 اسم الصنف</option>
+              </select>
+            </div>
+
+            {/* Table Container */}
+            <div className="admin-table-container">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>صنف اللحم / الصفحة</th>
+                    <th style={{ color: "var(--color-brand-gold)" }}>مرات الزيارة والمسح</th>
+                    <th>التقييم العام</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const productMap = new Map<string, { label: string; icon: string }>();
+                    productMap.set("home", { label: "🏠 الرمز العام (الصفحة الرئيسية)", icon: "🏠" });
+                    productMap.set("loyalty", { label: "🦁 رمز جمع نقاط الولاء (الملحمة)", icon: "🦁" });
+
+                    productsList.forEach((p) => {
+                      productMap.set(p.id, { label: `${p.icon} ${p.name}`, icon: p.icon });
+                    });
+
+                    // Add any other keys from stats.scans
+                    Object.keys(stats.scans || {}).forEach((k) => {
+                      if (!productMap.has(k)) {
+                        productMap.set(k, { label: `🥩 ${recipes[k]?.title || k}`, icon: "🥩" });
+                      }
+                    });
+
+                    let items = Array.from(productMap.entries()).map(([pKey, info]) => {
+                      const scanCount = stats.scans[pKey] || 0;
+                      const ratingInfo = stats.ratings[pKey] || { count: 0, avg: 0 };
+                      return {
+                        id: pKey,
+                        label: info.label,
+                        scanCount,
+                        ratingAvg: ratingInfo.avg,
+                        ratingCount: ratingInfo.count,
+                      };
+                    });
+
+                    // Filter search
+                    if (perfSearch.trim()) {
+                      const q = perfSearch.trim().toLowerCase();
+                      items = items.filter((it) => it.label.toLowerCase().includes(q) || it.id.toLowerCase().includes(q));
+                    }
+
+                    // Sort
+                    if (perfSortBy === "scans") {
+                      items.sort((a, b) => b.scanCount - a.scanCount);
+                    } else if (perfSortBy === "rating") {
+                      items.sort((a, b) => b.ratingAvg - a.ratingAvg);
+                    } else if (perfSortBy === "title") {
+                      items.sort((a, b) => a.label.localeCompare(b.label, "ar"));
+                    }
+
+                    // Paginate
+                    const totalPages = Math.ceil(items.length / itemsPerPage) || 1;
+                    const currentPage = Math.min(perfPage, totalPages);
+                    const startIndex = (currentPage - 1) * itemsPerPage;
+                    const paginatedItems = items.slice(startIndex, startIndex + itemsPerPage);
+
+                    if (items.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={3} style={{ textAlign: "center", color: "var(--color-text-muted)", fontSize: "0.8rem", padding: "1.5rem" }}>
+                            لا توجد نتائج مطابقة للبحث.
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return paginatedItems.map((item) => (
+                      <tr key={item.id}>
+                        <td style={{ fontWeight: 700, color: "white", fontSize: "0.85rem" }}>
+                          {item.label}
+                        </td>
+                        <td style={{ fontWeight: 800, color: item.scanCount > 0 ? "var(--color-brand-gold)" : "white", fontSize: "0.85rem" }}>
+                          {item.scanCount} زيارة
+                        </td>
+                        <td style={{ fontSize: "0.8rem" }}>
+                          {item.ratingCount > 0 ? (
+                            <span style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
+                              ★ {item.ratingAvg} ({item.ratingCount})
+                            </span>
+                          ) : (
+                            <span style={{ color: "var(--color-text-muted)" }}>لا تقييمات</span>
+                          )}
+                        </td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* Collected Leads Card */}
+          {/* Customer Leads Table */}
           <div className="card" style={{ marginTop: "1.25rem" }}>
             <h3 style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--color-brand-gold)", marginBottom: "0.5rem" }}>
-              📞 قائمة العملاء المسجلين ({stats.leads.total})
+              🎁 قاعدة العملاء الراغبين بالخصم (Leads)
             </h3>
-            {stats.leads.recent.length === 0 ? (
+            {!stats.leads.recent || stats.leads.recent.length === 0 ? (
               <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", textAlign: "center", padding: "1rem 0" }}>
                 لا يوجد عملاء مسجلين بعد.
               </p>
@@ -879,7 +717,6 @@ export default function AdminDashboard() {
                             day: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
-                            second: "2-digit",
                             hour12: true,
                           })}
                         </td>
@@ -890,227 +727,6 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
-
-          {/* Customer Reviews & Feedback Comments Card */}
-          <div className="card" style={{ marginTop: "1.25rem" }}>
-            <h3 style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--color-brand-gold)", marginBottom: "0.5rem" }}>
-              💬 أحدث تقييمات وملاحظات العملاء
-            </h3>
-            {!stats.recentRatings || stats.recentRatings.length === 0 ? (
-              <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", textAlign: "center", padding: "1rem 0" }}>
-                لا توجد تقييمات أو ملاحظات مسجلة بعد.
-              </p>
-            ) : (
-              <div className="admin-table-container">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>الوصفة / المنتج</th>
-                      <th>التقييم</th>
-                      <th>الملاحظات والتعليقات</th>
-                      <th>تاريخ الإدخال</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.recentRatings.map((rate: any) => {
-                      const recipeLabels: Record<string, string> = {
-                        steak: "🥩 ستيك ريب آي",
-                        burger: "🍔 برغر بلدي",
-                        kebab: "🔥 كباب بلدي",
-                        ribs: "🍖 ريش غنم",
-                        tenderloin: "🍽️ ستيك تندرلوين",
-                        kofta: "🥘 كفتة بالصحن",
-                        awsal: "🍢 أوصال لحم",
-                        smash: "🧀 برغر سماش",
-                      };
-                      return (
-                        <tr key={rate.id} style={{ fontSize: "0.85rem" }}>
-                          <td style={{ color: "white", fontWeight: 700 }}>
-                            {recipeLabels[rate.product] || rate.product}
-                          </td>
-                          <td style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
-                            {"★".repeat(rate.stars)}{"☆".repeat(5 - rate.stars)}
-                          </td>
-                          <td style={{ color: rate.comment ? "white" : "var(--color-text-muted)", fontStyle: rate.comment ? "normal" : "italic", maxWidth: "260px" }}>
-                            {rate.comment ? (
-                              rate.comment.length > 20 ? (
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                                  <span style={{ wordBreak: "break-word" }}>{rate.comment.substring(0, 18)}...</span>
-                                  <button
-                                    onClick={() => setViewingComment(rate)}
-                                    style={{
-                                      background: "rgba(223, 138, 39, 0.15)",
-                                      color: "var(--color-brand-gold)",
-                                      border: "1px solid rgba(223, 138, 39, 0.4)",
-                                      borderRadius: "6px",
-                                      padding: "0.2rem 0.55rem",
-                                      fontSize: "0.75rem",
-                                      fontWeight: 700,
-                                      cursor: "pointer",
-                                      whiteSpace: "nowrap",
-                                      transition: "all 0.2s ease",
-                                    }}
-                                  >
-                                    🔍 أظهر المزيد
-                                  </button>
-                                </div>
-                              ) : (
-                                rate.comment
-                              )
-                            ) : (
-                              "بدون تعليق مضاف"
-                            )}
-                          </td>
-                          <td style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
-                            {new Date(rate.createdAt).toLocaleString("ar-EG", {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: true,
-                            })}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* Full Comment Modal Popup */}
-          {viewingComment && (
-            <div
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: "rgba(0, 0, 0, 0.85)",
-                backdropFilter: "blur(6px)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 10000,
-                padding: "1rem",
-              }}
-              className="animate-fade-in"
-              onClick={() => setViewingComment(null)}
-            >
-              <div
-                className="card card-gold-border"
-                style={{
-                  maxWidth: "500px",
-                  width: "100%",
-                  padding: "1.75rem",
-                  position: "relative",
-                  background: "#141414",
-                  boxShadow: "0 20px 40px rgba(0,0,0,0.6)",
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  onClick={() => setViewingComment(null)}
-                  style={{
-                    position: "absolute",
-                    top: "1rem",
-                    left: "1rem",
-                    background: "rgba(255,255,255,0.08)",
-                    border: "none",
-                    color: "white",
-                    width: "32px",
-                    height: "32px",
-                    borderRadius: "50%",
-                    fontSize: "1.1rem",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  ✕
-                </button>
-
-                <h3
-                  style={{
-                    fontWeight: 800,
-                    fontSize: "1.15rem",
-                    color: "var(--color-brand-gold)",
-                    marginBottom: "1.25rem",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <span>💬</span> تفاصيل تعليق وملاحظة العميل
-                </h3>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", marginBottom: "1.5rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>المنتج / الوصفة:</span>
-                    <span style={{ color: "white", fontWeight: 800, fontSize: "0.95rem" }}>
-                      {viewingComment.product}
-                    </span>
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>التقييم:</span>
-                    <span style={{ color: "var(--color-brand-gold)", fontWeight: 800, fontSize: "1.1rem" }}>
-                      {"★".repeat(viewingComment.stars)}{"☆".repeat(5 - viewingComment.stars)} ({viewingComment.stars}/5)
-                    </span>
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>تاريخ الإدخال:</span>
-                    <span style={{ color: "var(--color-text-light)", fontSize: "0.8rem" }}>
-                      {new Date(viewingComment.createdAt).toLocaleString("ar-EG", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                      })}
-                    </span>
-                  </div>
-
-                  <div style={{ borderTop: "1px dashed var(--color-border)", paddingTop: "0.85rem", marginTop: "0.25rem" }}>
-                    <span style={{ fontSize: "0.85rem", color: "var(--color-brand-gold)", fontWeight: 800, display: "block", marginBottom: "0.4rem" }}>
-                      📝 نص الملاحظة والتعليق كاملاً:
-                    </span>
-                    <div
-                      style={{
-                        background: "rgba(255, 255, 255, 0.04)",
-                        border: "1px solid rgba(255, 255, 255, 0.08)",
-                        borderRadius: "10px",
-                        padding: "1rem",
-                        color: "white",
-                        lineHeight: 1.6,
-                        fontSize: "0.95rem",
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-word",
-                        maxHeight: "220px",
-                        overflowY: "auto",
-                      }}
-                    >
-                      {viewingComment.comment}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  className="btn-gold"
-                  onClick={() => setViewingComment(null)}
-                  style={{ width: "100%", padding: "0.65rem", fontSize: "0.9rem", fontWeight: 700 }}
-                >
-                  إغلاق النافذة
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -1121,7 +737,7 @@ export default function AdminDashboard() {
             🎬 قائمة الوصفات وإدارة الفيديوهات
           </h3>
           <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)", marginBottom: "1.5rem" }}>
-            يمكنك من هنا إضافة أو تغيير رابط فيديو الشرح (YouTube أو رابط مباشر) والتعديل على المقادير والخطوات.
+            يمكنك إضافة وإدارة وصفات التحضير والفيديوهات لكل صنف من أصناف اللحوم الـ 18.
           </p>
 
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1.25rem" }}>
@@ -1131,57 +747,57 @@ export default function AdminDashboard() {
           </div>
 
           <div className="grid-categories">
-            {Object.keys(recipes).map((p) => {
-              const r = recipes[p];
-              const title = r ? r.title : p;
-              const hasVideo = r && r.videoUrl;
-              const icon = p.includes("steak") ? "🥩" : p.includes("burger") ? "🍔" : p.includes("kebab") ? "🔥" : p.includes("ribs") ? "🍖" : "🍳";
+            {Object.keys(recipes).length === 0 ? (
+              <div className="card" style={{ gridColumn: "1 / -1", textAlign: "center", padding: "2rem" }}>
+                <p style={{ color: "var(--color-text-muted)" }}>لا توجد وصفات مضافة بعد. يمكنك الضغط على "إضافة وصفة جديدة" بالأعلى لإضافة أول وصفة.</p>
+              </div>
+            ) : (
+              Object.keys(recipes).map((p) => {
+                const r = recipes[p];
+                const title = r ? r.title : p;
+                const hasVideo = r && r.videoUrl;
+                const icon = r.icon || "🥩";
 
-              return (
-                <div key={p} className="card card-gold-border" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                      <h4 style={{ fontWeight: 800, fontSize: "1.05rem", color: "white" }}>
-                        {icon} {title}
-                      </h4>
-                      <span className={`badge ${hasVideo ? "badge-gold" : ""}`} style={{ fontSize: "0.7rem" }}>
-                        {hasVideo ? "🎥 يوجد فيديو" : "⚠️ بدون فيديو"}
-                      </span>
+                return (
+                  <div key={p} className="card card-gold-border" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                        <h4 style={{ fontWeight: 800, fontSize: "1.05rem", color: "white" }}>
+                          {icon} {title}
+                        </h4>
+                        <span className={`badge ${hasVideo ? "badge-gold" : ""}`} style={{ fontSize: "0.7rem" }}>
+                          {hasVideo ? "🎥 يوجد فيديو" : "⚠️ بدون فيديو"}
+                        </span>
+                      </div>
+
+                      <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", marginBottom: "1rem", lineHeight: 1.4 }}>
+                        {r ? r.description : "انقر لتعديل تفاصيل هذه الوصفة."}
+                      </p>
                     </div>
 
-                    <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", marginBottom: "1rem", lineHeight: 1.4 }}>
-                      {r ? r.description : "انقر لتعديل تفاصيل هذه الوصفة."}
-                    </p>
-
-                    {hasVideo && (
-                      <p style={{ fontSize: "0.75rem", color: "var(--color-brand-gold)", marginBottom: "1rem", wordBreak: "break-all", direction: "ltr", textAlign: "right" }}>
-                        🔗 {r.videoUrl}
-                      </p>
-                    )}
+                    <button
+                      className="btn-gold"
+                      onClick={() => openRecipeEditor(r)}
+                      style={{ fontSize: "0.85rem", padding: "0.6rem" }}
+                    >
+                      ✏️ تعديل الوصفة والفيديو
+                    </button>
                   </div>
-
-                  <button
-                    className="btn-gold"
-                    onClick={() => openRecipeEditor(r)}
-                    style={{ fontSize: "0.85rem", padding: "0.6rem" }}
-                  >
-                    ✏️ تعديل الوصفة والفيديو
-                  </button>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
       )}
 
-      {/* TAB 3: QR CODE EXTRACTION & PRINTING */}
+      {/* TAB 3: QR CODE EXTRACTION & PRINTING FOR ALL 18 PRODUCTS */}
       {activeTab === "qr" && (
         <div className="animate-fade-in">
           <h3 style={{ fontWeight: 800, fontSize: "1.1rem", color: "white", marginBottom: "0.5rem" }}>
-            🖨️ استخراج وطباعة رموز الـ QR للعبوات
+            🖨️ استخراج وطباعة رموز الـ QR لجميع أصناف اللحوم الـ 18
           </h3>
           <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)", marginBottom: "1.25rem" }}>
-            استخرج وحمّل رموز الـ QR عالية الدقة لكل عبوة لحم في ملاحم ومطاعم المركزية لطباعتها ولصقها على المنتجات مباشرة.
+            استخرج وحمّل رموز الـ QR عالية الدقة لكل عبوة وصنف من أصناف المركزية لطباعتها ولصقها على أطباق العبوات مباشرة.
           </p>
 
           {/* Domain Host Input */}
@@ -1194,19 +810,25 @@ export default function AdminDashboard() {
               className="form-input"
               value={domainHost}
               onChange={(e) => setDomainHost(e.target.value)}
-              placeholder="مثال: https://recipes.markzia.com أو http://localhost:3000"
+              placeholder="مثال: https://almarkazia.alidanoun440.workers.dev"
               style={{ direction: "ltr", textAlign: "left", marginTop: "0.35rem" }}
             />
             <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", marginTop: "0.35rem", display: "block" }}>
-              * عند رفع الموقع على الدومين الحقيقي الخاص بكم (مثل recipes.markzia.com)، قم بتأكيد العنوان أعلاه وسيتم توليد جميع الرموز لهذا الدومين تلقائياً.
+              * التأكد من النطاق يضمن توجيه مسح الـ QR للرابط الصحيح.
             </span>
           </div>
 
-          {/* Products QR Grid */}
-          <div className="grid-categories" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+          {/* All 18 Products + System QR Grid */}
+          <div className="grid-categories" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
             {[
               { id: "home", title: "الرمز العام (الصفحة الرئيسية)", icon: "🏠", path: "/?source=qr" },
-              { id: "loyalty", title: "رمز جمع نقاط الولاء (يُعلق في الملحمة)", icon: "🦁", path: "/collect?source=qr" },
+              { id: "loyalty", title: "رمز جمع نقاط الولاء (الملحمة)", icon: "🦁", path: "/collect?source=qr" },
+              ...productsList.map((p) => ({
+                id: p.id,
+                title: p.name,
+                icon: p.icon,
+                path: `/${p.id}?source=qr`,
+              })),
             ].map((prod) => {
               const fullUrl = `${domainHost.replace(/\/$/, "")}${prod.path}`;
               const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(fullUrl)}`;
@@ -1214,25 +836,22 @@ export default function AdminDashboard() {
               return (
                 <div key={prod.id} className="card card-gold-border" style={{ textAlign: "center" }}>
                   <span style={{ fontSize: "2.5rem", display: "block" }}>{prod.icon}</span>
-                  <h4 style={{ fontWeight: 800, fontSize: "1.1rem", color: "white", margin: "0.5rem 0" }}>
+                  <h4 style={{ fontWeight: 800, fontSize: "1rem", color: "white", margin: "0.5rem 0", height: "2.4rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {prod.title}
                   </h4>
-                  <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", marginBottom: "0.75rem", direction: "ltr" }}>
-                    {fullUrl}
-                  </p>
 
                   {/* QR Image Preview */}
                   <div
                     style={{
                       background: "white",
-                      padding: "0.75rem",
+                      padding: "0.6rem",
                       borderRadius: "12px",
                       display: "inline-block",
-                      marginBottom: "1rem",
+                      marginBottom: "0.85rem",
                       boxShadow: "0 0 15px rgba(223, 138, 39, 0.2)",
                     }}
                   >
-                    <img src={qrImageUrl} alt={prod.title} style={{ width: "180px", height: "180px", display: "block" }} />
+                    <img src={qrImageUrl} alt={prod.title} style={{ width: "160px", height: "160px", display: "block" }} />
                   </div>
 
                   <div style={{ display: "flex", gap: "0.5rem", flexDirection: "column" }}>
@@ -1242,13 +861,13 @@ export default function AdminDashboard() {
                         border: "1px solid var(--color-brand-gold)",
                         color: "white",
                         borderRadius: "8px",
-                        padding: "0.5rem",
-                        fontSize: "0.85rem",
+                        padding: "0.4rem",
+                        fontSize: "0.78rem",
                         fontWeight: 700,
                         textAlign: "center"
                       }}
                     >
-                      👁️ عدد الزيارات (مسح الـ QR): <strong style={{ color: "var(--color-brand-gold)", fontSize: "1rem" }}>{stats ? (stats.scans[prod.id] || 0) : 0}</strong>
+                      👁️ عدد الزيارات (QR): <strong style={{ color: "var(--color-brand-gold)", fontSize: "0.95rem" }}>{stats ? (stats.scans[prod.id] || 0) : 0}</strong>
                     </div>
 
                     <button
@@ -1264,7 +883,7 @@ export default function AdminDashboard() {
                                 .sticker { border: 3px double #df8a27; border-radius: 20px; padding: 25px; max-width: min(350px, 100%); margin: 0 auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
                                 .logo { width: 90px; height: 90px; border-radius: 50%; }
                                 h2 { color: #000; margin: 10px 0 5px 0; font-size: 20px; }
-                                p { color: #555; font-size: 13px; margin-bottom: 15px; }
+                                p { color: #555; font-size: 14px; margin-bottom: 15px; font-weight: bold; }
                                 img.qr { max-width: 100%; width: min(220px, 100%); height: auto; }
                                 .footer-text { background: #141414; color: #df8a27; padding: 8px; border-radius: 8px; font-weight: bold; font-size: 13px; margin-top: 15px; }
                               </style>
@@ -1284,7 +903,7 @@ export default function AdminDashboard() {
                         }
                       }}
                       className="btn-outline"
-                      style={{ fontSize: "0.8rem", padding: "0.5rem" }}
+                      style={{ fontSize: "0.8rem", padding: "0.45rem" }}
                     >
                       🖨️ طباعة ملصق العبوة
                     </button>
@@ -1296,333 +915,16 @@ export default function AdminDashboard() {
         </div>
       )}
 
-
-
-      {/* EDIT RECIPE MODAL */}
-      {editingRecipe && (
-        <div className="modal-overlay" onClick={() => setEditingRecipe(null)}>
-          <div
-            className="modal-content animate-slide-up"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: "650px", maxHeight: "90vh", overflowY: "auto" }}
-          >
-            <button className="modal-close" onClick={() => setEditingRecipe(null)}>
-              &times;
-            </button>
-
-            <h3 style={{ fontWeight: 800, color: "var(--color-brand-gold)", fontSize: "1.2rem", marginBottom: "0.35rem" }}>
-              ✏️ تعديل وصفة ({editingRecipe.title})
-            </h3>
-            <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", marginBottom: "1.25rem" }}>
-              أدخل رابط فيديو YouTube أو فيديو مباشر، وعدّل تفاصيل الوصفة ثم اضغط حفظ.
-            </p>
-
-            {saveSuccess && (
-              <div
-                style={{
-                  background: "rgba(16, 185, 129, 0.15)",
-                  border: "1px solid var(--color-success)",
-                  color: "var(--color-success)",
-                  padding: "0.75rem",
-                  borderRadius: "8px",
-                  fontSize: "0.85rem",
-                  fontWeight: 700,
-                  textAlign: "center",
-                  marginBottom: "1rem",
-                }}
-              >
-                ✓ تم حفظ التعديلات والفيديو بنجاح!
-              </div>
-            )}
-
-            <form onSubmit={handleSaveRecipe}>
-              {/* Primary Type: Meat vs Chicken & Subcategory */}
-              <div className="responsive-two-column-grid">
-                <div className="form-group">
-                  <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
-                    🥩 🍗 الصنف الأساسي (نوع اللحم / الدجاج):
-                  </label>
-                  <select
-                    className="form-input"
-                    value={formMeatType}
-                    onChange={(e) => setFormMeatType(e.target.value)}
-                    style={{ background: "#111", color: "white", padding: "0.5rem", fontWeight: 700 }}
-                  >
-                    <option value="meat">🥩 {meatTabLabel}</option>
-                    <option value="chicken">🍗 {chickenTabLabel}</option>
-                    {customSections.map((sec) => (
-                      <option key={sec.id} value={sec.id}>
-                        {sec.icon} {sec.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">اسم التصنيف الفرعي (مثل: ستيك، برغر، كباب، شيش طاووق):</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value)}
-                    placeholder="مثال: شيش طاووق، ستيك، برغر..."
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Custom Emoji / Icon Input */}
-              <div className="form-group">
-                <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
-                  🎨 إيموجي / أيقونة الوصفة (اختر أو اكتب أي إيموجي):
-                </label>
-                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="مثال: 🥩 أو 🍗 أو 🍔 أو 🍢"
-                    value={formIcon}
-                    onChange={(e) => setFormIcon(e.target.value)}
-                    style={{ width: "120px", fontSize: "1.2rem", textAlign: "center" }}
-                  />
-                  <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
-                    {["🥩", "🍗", "🍔", "🔥", "🍖", "🥘", "🍢", "🌭", "🌮", "👑", "✨"].map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() => setFormIcon(emoji)}
-                        style={{
-                          padding: "0.35rem 0.6rem",
-                          borderRadius: "6px",
-                          border: formIcon === emoji ? "2px solid var(--color-brand-gold)" : "1px solid var(--color-border)",
-                          background: formIcon === emoji ? "rgba(234, 179, 8, 0.2)" : "#27272a",
-                          cursor: "pointer",
-                          fontSize: "1.1rem",
-                        }}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Recipe Real Image Upload Input */}
-              <div className="form-group" style={{ background: "rgba(255,255,255,0.03)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(223, 138, 39, 0.2)" }}>
-                <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                  🖼️ صورة الوصفة الحقيقية (تظهر بالبطاقة والصفحة بدلاً من الإيموجي):
-                </label>
-                
-                <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap", marginTop: "0.5rem" }}>
-                  {formImageUrl ? (
-                    <div style={{ position: "relative", display: "inline-block" }}>
-                      <img
-                        src={formImageUrl}
-                        alt="معاينة الصورة"
-                        style={{ width: "90px", height: "90px", borderRadius: "10px", objectFit: "cover", border: "2px solid var(--color-brand-gold)" }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setFormImageUrl("")}
-                        style={{
-                          position: "absolute",
-                          top: "-8px",
-                          right: "-8px",
-                          background: "#ef4444",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "50%",
-                          width: "24px",
-                          height: "24px",
-                          cursor: "pointer",
-                          fontWeight: "bold",
-                          fontSize: "0.75rem",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                        title="حذف الصورة"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ width: "90px", height: "90px", borderRadius: "10px", border: "2px dashed var(--color-border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-muted)", fontSize: "1.8rem" }}>
-                      📷
-                    </div>
-                  )}
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", flex: 1 }}>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      disabled={uploadingImage}
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        setUploadingImage(true);
-                        try {
-                          const resizedBlob = await resizeImage(file, 1200, 0.8);
-                          const fd = new FormData();
-                          fd.append("file", resizedBlob, file.name.replace(/\.[^/.]+$/, "") + ".jpg");
-                          fd.append("recipeId", formId || "recipe");
-
-                          const res = await fetch("/api/upload-image", { method: "POST", body: fd });
-                          const data = await res.json();
-                          if (res.ok && data.success) {
-                            setFormImageUrl(data.imageUrl);
-                          } else {
-                            alert(data.error || "فشل رفع الصورة");
-                          }
-                        } catch (err) {
-                          console.error("Upload error:", err);
-                          alert("خطأ أثناء معالجة أو رفع الصورة");
-                        } finally {
-                          setUploadingImage(false);
-                        }
-                      }}
-                      style={{ fontSize: "0.85rem", color: "white" }}
-                    />
-                    <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
-                      {uploadingImage ? "جاري ضغط ورفع الصورة..." : "* يتم تصغير الصورة تلقائياً لحجم مثالي وتنسيق عالي الجودة لسرعة التصفح."}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              {/* Video URL Input */}
-              <div className="form-group">
-                <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
-                  🎥 رابط فيديو الشرح (رابط YouTube أو رابط MP4 مباشر):
-                </label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="مثال: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-                  value={formVideoUrl}
-                  onChange={(e) => setFormVideoUrl(e.target.value)}
-                  style={{ direction: "ltr", textAlign: "left" }}
-                />
-                <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
-                  * يمكنك وضع رابط فيديو عادي أو Shorts من يوتيوب، وسيتم عرضه تلقائياً داخل المشغل.
-                </span>
-              </div>
-
-              {/* Title & Description */}
-              <div className="form-group">
-                <label className="form-label">عنوان الوصفة:</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">وصف الوصفة:</label>
-                <textarea
-                  className="form-input"
-                  rows={2}
-                  value={formDesc}
-                  onChange={(e) => setFormDesc(e.target.value)}
-                  style={{ resize: "vertical" }}
-                />
-              </div>
-
-              {/* Prep & Cook Times */}
-              <div className="responsive-two-column-grid">
-                <div className="form-group">
-                  <label className="form-label">وقت التحضير:</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formPrep}
-                    onChange={(e) => setFormPrep(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">وقت الطهي:</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formCook}
-                    onChange={(e) => setFormCook(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Marinade */}
-              <div className="form-group">
-                <label className="form-label">طريقة التتبيل:</label>
-                <textarea
-                  className="form-input"
-                  rows={2}
-                  value={formMarinade}
-                  onChange={(e) => setFormMarinade(e.target.value)}
-                  style={{ resize: "vertical" }}
-                />
-              </div>
-
-              {/* Ingredients (المكونات والمقادير) */}
-              <div className="form-group">
-                <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
-                  📋 المكونات والمقادير الكاملة (مكون واحد في كل سطر):
-                </label>
-                <textarea
-                  className="form-input"
-                  rows={6}
-                  value={formIngredients}
-                  onChange={(e) => setFormIngredients(e.target.value)}
-                  style={{ resize: "vertical", borderColor: "rgba(223, 138, 39, 0.4)" }}
-                  placeholder="اكتب المكونات هنا... مثلاً:&#10;1 قطعة ستيك ريب آي من المركزية 3-4 سم&#10;ملح بحري خشن وفلفل أسود طازج&#10;3 ملاعق كبار زبدة غير مملحة عالية الجودة&#10;3 فصوص ثوم مهروسة بلطف"
-                />
-              </div>
-
-              {/* Instructions */}
-              <div className="form-group">
-                <label className="form-label">خطوات التحضير والطهي (خطوة واحدة في كل سطر):</label>
-                <textarea
-                  className="form-input"
-                  rows={5}
-                  value={formInstructions}
-                  onChange={(e) => setFormInstructions(e.target.value)}
-                  style={{ resize: "vertical" }}
-                />
-              </div>
-
-              {/* Tips */}
-              <div className="form-group">
-                <label className="form-label">نصائح الطاهي الذهبية (نصيحة واحدة في كل سطر):</label>
-                <textarea
-                  className="form-input"
-                  rows={3}
-                  value={formTips}
-                  onChange={(e) => setFormTips(e.target.value)}
-                  style={{ resize: "vertical" }}
-                />
-              </div>
-
-              <button type="submit" className="btn-gold" disabled={savingRecipe} style={{ marginTop: "0.5rem" }}>
-                {savingRecipe ? "جاري حفظ التغييرات..." : "💾 حفظ التغييرات والفيديو"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-
-
       {/* TAB 4: SITE SETTINGS */}
       {activeTab === "settings" && (
         <div className="card animate-fade-in" style={{ maxWidth: "650px", margin: "1.5rem auto 0 auto" }}>
           <h3 style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--color-brand-gold)", marginBottom: "1.25rem", textAlign: "center" }}>
-            ⚙️ التحكم في أسماء الموقع وأقسام المنتجات
+            ⚙️ التحكم في إعدادات وعنوان الموقع
           </h3>
 
           {settingsSuccess && (
             <div style={{ padding: "0.75rem", backgroundColor: "rgba(34, 197, 94, 0.15)", color: "#4ade80", borderRadius: "8px", marginBottom: "1.25rem", textAlign: "center", fontWeight: 700 }}>
-              ✅ تم حفظ الإعدادات بنجاح وتحديث الموقع الرئيسي!
+              ✅ تم حفظ الإعدادات بنجاح!
             </div>
           )}
 
@@ -1648,126 +950,9 @@ export default function AdminDashboard() {
                 rows={2}
                 value={siteSubtitle}
                 onChange={(e) => setSiteSubtitle(e.target.value)}
-                placeholder="اختر صنف اللحوم أو الدجاج المفضل لديك..."
+                placeholder="اختر صنف اللحوم المفضلة لديك واكتشف أسرار التتبيل..."
                 style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white", resize: "vertical" }}
               />
-            </div>
-
-            <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: "1.25rem" }}>
-              <h4 style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--color-brand-gold)", marginBottom: "0.85rem" }}>
-                🥩 أسماء الأقسام الرئيسية (أزرار التصفية في الموقع):
-              </h4>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: "0.3rem", color: "white" }}>
-                    🥩 اسم قسم اللحوم:
-                  </label>
-                  <input
-                    type="text"
-                    value={meatTabLabel}
-                    onChange={(e) => setMeatTabLabel(e.target.value)}
-                    placeholder="مثال: قسم اللحوم الحمراء"
-                    style={{ width: "100%", padding: "0.65rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white" }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: "0.3rem", color: "white" }}>
-                    🍗 اسم قسم الدجاج:
-                  </label>
-                  <input
-                    type="text"
-                    value={chickenTabLabel}
-                    onChange={(e) => setChickenTabLabel(e.target.value)}
-                    placeholder="مثال: قسم الدجاج"
-                    style={{ width: "100%", padding: "0.65rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white" }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: "0.3rem", color: "white" }}>
-                    🌟 اسم زر (جميع الأصناف):
-                  </label>
-                  <input
-                    type="text"
-                    value={allTabLabel}
-                    onChange={(e) => setAllTabLabel(e.target.value)}
-                    placeholder="مثال: جميع الأصناف"
-                    style={{ width: "100%", padding: "0.65rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white" }}
-                  />
-                </div>
-              </div>
-
-              {/* Dynamic Custom Main Sections Controls */}
-              <div style={{ marginTop: "1.5rem", paddingTop: "1.25rem", borderTop: "1px dashed var(--color-border)" }}>
-                <h4 style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--color-brand-gold)", marginBottom: "0.5rem" }}>
-                  ➕ إضافة وتخصيص أقسام رئيسية جديدة للموقع:
-                </h4>
-                <p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", marginBottom: "1rem" }}>
-                  أضف هنا أي أقسام رئيسية جديدة تود عرضها كأزرار أساسية في أعلى الصفحة (مثل: قسم الأسماك والبحريات، قسم المشاوي، قسم السلطات وصواني الفرن... إلخ).
-                </p>
-
-                {/* Existing Custom Sections List */}
-                {customSections.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
-                    {customSections.map((sec, idx) => (
-                      <div key={sec.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.04)", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid var(--color-border)" }}>
-                        <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "white" }}>
-                          {sec.icon} {sec.name}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setCustomSections(customSections.filter((_, i) => i !== idx))}
-                          style={{ background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "6px", padding: "0.25rem 0.65rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: 700 }}
-                        >
-                          🗑️ حذف القسم
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Add New Custom Section Input */}
-                <div style={{ background: "rgba(223, 138, 39, 0.05)", border: "1px dashed var(--color-brand-gold)", borderRadius: "10px", padding: "1rem" }}>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "var(--color-brand-gold)", marginBottom: "0.5rem" }}>
-                    ✨ إنشاء قسم رئيسي جديد:
-                  </label>
-                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                    <input
-                      type="text"
-                      placeholder="إيموجي (مثلاً 🐟)"
-                      value={newSectionIcon}
-                      onChange={(e) => setNewSectionIcon(e.target.value)}
-                      style={{ width: "90px", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white", textAlign: "center", fontSize: "1.1rem" }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="اسم القسم الجديد (مثال: قسم الأسماك والبحريات)"
-                      value={newSectionName}
-                      onChange={(e) => setNewSectionName(e.target.value)}
-                      style={{ flex: 1, minWidth: "180px", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--color-border)", background: "#18181b", color: "white", fontSize: "0.85rem" }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!newSectionName.trim()) {
-                          alert("يرجى إدخال اسم القسم الجديد");
-                          return;
-                        }
-                        const id = "sec_" + Date.now();
-                        setCustomSections([...customSections, { id, name: newSectionName.trim(), icon: newSectionIcon || "🍽️" }]);
-                        setNewSectionName("");
-                        setNewSectionIcon("🍽️");
-                      }}
-                      className="btn-gold"
-                      style={{ padding: "0.6rem 1rem", fontSize: "0.85rem", width: "auto", animation: "none" }}
-                    >
-                      ➕ إضافة القسم
-                    </button>
-                  </div>
-                </div>
-              </div>
             </div>
 
             <button
@@ -1782,9 +967,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════ */}
-      {/* TAB 5: LOYALTY CARDS DASHBOARD                */}
-      {/* ══════════════════════════════════════════════ */}
+      {/* TAB 5: LOYALTY CARDS DASHBOARD */}
       {activeTab === "loyalty" && (
         <div className="animate-fade-in">
           {/* Header */}
@@ -1831,7 +1014,6 @@ export default function AdminDashboard() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
               {loyaltyCards.map((card, idx) => {
-                const pct = Math.min((card.points / 10) * 100, 100);
                 const isMaxed = card.points >= 10 && !card.rewardUsed;
                 return (
                   <div
@@ -1883,7 +1065,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    {/* Progress dots + bar */}
+                    {/* Progress dots */}
                     <div>
                       <div style={{ display: "flex", gap: "0.25rem", marginBottom: "0.4rem" }}>
                         {Array.from({ length: 10 }).map((_, i) => (
@@ -1915,6 +1097,170 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* EDIT RECIPE MODAL */}
+      {editingRecipe && (
+        <div className="modal-overlay" onClick={() => setEditingRecipe(null)}>
+          <div
+            className="modal-content animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "650px", maxHeight: "90vh", overflowY: "auto" }}
+          >
+            <button className="modal-close" onClick={() => setEditingRecipe(null)}>
+              &times;
+            </button>
+
+            <h3 style={{ fontWeight: 800, color: "var(--color-brand-gold)", fontSize: "1.2rem", marginBottom: "0.35rem" }}>
+              ✏️ تعديل وصفة ({editingRecipe.title || "وصفة جديدة"})
+            </h3>
+            <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", marginBottom: "1.25rem" }}>
+              أدخل رابط فيديو YouTube أو فيديو مباشر، وعدّل تفاصيل الوصفة والصنف ثم اضغط حفظ.
+            </p>
+
+            {saveSuccess && (
+              <div
+                style={{
+                  background: "rgba(16, 185, 129, 0.15)",
+                  border: "1px solid var(--color-success)",
+                  color: "var(--color-success)",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  textAlign: "center",
+                  marginBottom: "1rem",
+                }}
+              >
+                ✓ تم حفظ التعديلات والفيديو بنجاح!
+              </div>
+            )}
+
+            <form onSubmit={handleSaveRecipe}>
+              <div className="responsive-two-column-grid">
+                <div className="form-group">
+                  <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
+                    🥩 صنف اللحم المرتبط بالوصفة:
+                  </label>
+                  <select
+                    className="form-input"
+                    value={formProductId}
+                    onChange={(e) => setFormProductId(e.target.value)}
+                    style={{ background: "#111", color: "white", padding: "0.5rem", fontWeight: 700 }}
+                  >
+                    {productsList.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.icon} {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">عنوان الوصفة:</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    placeholder="مثال: ستيك ريب آي بصلصة الزبدة..."
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Video URL */}
+              <div className="form-group">
+                <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
+                  🎥 رابط فيديو الشرح (YouTube أو رابط مباشر MP4):
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formVideoUrl}
+                  onChange={(e) => setFormVideoUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  style={{ direction: "ltr" }}
+                />
+              </div>
+
+              {/* Times */}
+              <div className="responsive-two-column-grid">
+                <div className="form-group">
+                  <label className="form-label">وقت التحضير:</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={formPrep}
+                    onChange={(e) => setFormPrep(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">وقت الطهي:</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={formCook}
+                    onChange={(e) => setFormCook(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Marinade */}
+              <div className="form-group">
+                <label className="form-label">طريقة التتبيل:</label>
+                <textarea
+                  className="form-input"
+                  rows={2}
+                  value={formMarinade}
+                  onChange={(e) => setFormMarinade(e.target.value)}
+                  style={{ resize: "vertical" }}
+                />
+              </div>
+
+              {/* Ingredients */}
+              <div className="form-group">
+                <label className="form-label" style={{ color: "var(--color-brand-gold)", fontWeight: 700 }}>
+                  📋 المكونات والمقادير الكاملة (مكون واحد في كل سطر):
+                </label>
+                <textarea
+                  className="form-input"
+                  rows={5}
+                  value={formIngredients}
+                  onChange={(e) => setFormIngredients(e.target.value)}
+                  style={{ resize: "vertical" }}
+                />
+              </div>
+
+              {/* Instructions */}
+              <div className="form-group">
+                <label className="form-label">خطوات التحضير والطهي (خطوة واحدة في كل سطر):</label>
+                <textarea
+                  className="form-input"
+                  rows={5}
+                  value={formInstructions}
+                  onChange={(e) => setFormInstructions(e.target.value)}
+                  style={{ resize: "vertical" }}
+                />
+              </div>
+
+              {/* Tips */}
+              <div className="form-group">
+                <label className="form-label">نصائح الطاهي الذهبية (نصيحة واحدة في كل سطر):</label>
+                <textarea
+                  className="form-input"
+                  rows={3}
+                  value={formTips}
+                  onChange={(e) => setFormTips(e.target.value)}
+                  style={{ resize: "vertical" }}
+                />
+              </div>
+
+              <button type="submit" className="btn-gold" disabled={savingRecipe} style={{ marginTop: "0.5rem" }}>
+                {savingRecipe ? "جاري حفظ التغييرات..." : "💾 حفظ الوصفة"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
