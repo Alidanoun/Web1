@@ -14,7 +14,8 @@ export function middleware(request: NextRequest) {
     path.startsWith("/api/seed") ||
     path.startsWith("/api/loyalty/all") ||
     path.startsWith("/api/upload-image") ||
-    (path.startsWith("/api/recipes") && method !== "GET");
+    (path.startsWith("/api/recipes") && method !== "GET") ||
+    (path.startsWith("/api/products") && method !== "GET");
 
   if (!isProtectedPath) {
     return NextResponse.next();

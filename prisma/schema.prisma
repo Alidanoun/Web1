@@ -11,6 +11,7 @@ generator client {
 model Scan {
   id        String   @id @default(uuid())
   product   String   // 'burger', 'steak', 'kebab', 'ribs', etc.
+  source    String   @default("direct") // 'qr' or 'direct'
   createdAt DateTime @default(now())
 }
 
@@ -39,6 +40,7 @@ model OrderClick {
 
 model Recipe {
   id               String   @id // e.g. 'burger', 'steak', 'kebab', 'ribs', 'tenderloin', 'kofta', 'awsal', 'smash'
+  productId        String?  @default("")
   title            String
   category         String
   icon             String   @default("") // Custom emoji like 🥩, 🍗, 🍔, 🍢, 🍖
@@ -91,3 +93,13 @@ model LoyaltyCard {
   updatedAt    DateTime @updatedAt
 }
 
+model Product {
+  id        String   @id
+  name      String
+  weight    String   @default("")
+  icon      String   @default("🥩")
+  imageUrl  String   @default("")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

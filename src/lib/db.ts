@@ -139,8 +139,11 @@ export async function ensureTablesExist() {
     CREATE TABLE IF NOT EXISTS "Scan" (
       "id"        TEXT PRIMARY KEY,
       "product"   TEXT NOT NULL,
+      "source"    TEXT NOT NULL DEFAULT 'direct',
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
+
+  await runQuery(`ALTER TABLE "Scan" ADD COLUMN IF NOT EXISTS "source" TEXT NOT NULL DEFAULT 'direct'`);
 
   await runQuery(`
     CREATE TABLE IF NOT EXISTS "Rating" (
@@ -228,6 +231,20 @@ export async function ensureTablesExist() {
       "updatedAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
 
+  await runQuery(`
+    CREATE TABLE IF NOT EXISTS "Product" (
+      "id"        TEXT PRIMARY KEY,
+      "name"      TEXT NOT NULL,
+      "weight"    TEXT NOT NULL DEFAULT '',
+      "icon"      TEXT NOT NULL DEFAULT '🥩',
+      "imageUrl"  TEXT NOT NULL DEFAULT '',
+      "sortOrder" INTEGER NOT NULL DEFAULT 0,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+
+  await runQuery(`ALTER TABLE "Recipe" ADD COLUMN IF NOT EXISTS "productId" TEXT DEFAULT NULL`);
+
   _tablesEnsured = true;
 }
 
@@ -236,15 +253,16 @@ export async function ensureTablesExist() {
 export const prisma = {
   // ── Scan ──────────────────────────────────────────────────────────────────
   scan: {
-    create: async ({ data }: { data: { id: string; product: string } }) => {
+    create: async ({ data }: { data: { id: string; product: string; source?: string } }) => {
+      const src = data.source === "qr" ? "qr" : "direct";
       try {
         await runQuery(
-          `INSERT INTO "Scan" ("id","product") VALUES ($1,$2) ON CONFLICT ("id") DO NOTHING`,
-          [data.id, data.product]
+          `INSERT INTO "Scan" ("id","product","source") VALUES ($1,$2,$3) ON CONFLICT ("id") DO NOTHING`,
+          [data.id, data.product, src]
         );
       } catch (err) {
         console.warn("DB notice (Scan.create): using fallback store:", formatDbError(err));
-        fallbackStore.scans.unshift({ id: data.id, product: data.product, createdAt: new Date() });
+        fallbackStore.scans.unshift({ id: data.id, product: data.product, source: src, createdAt: new Date() } as any);
       }
       return data;
     },
@@ -486,6 +504,42 @@ export const prisma = {
         console.warn("DB notice (LoyaltyCard.findUnique): using fallback store:", formatDbError(err));
         return fallbackStore.loyaltyCards.get(where.phone) ?? null;
       }
+    },
+  },
+
+  // ── Product ──────────────────────────────────────────────────────────────
+  product: {
+    findMany: async () => {
+      try {
+        return await runQuery(`SELECT * FROM "Product" ORDER BY "sortOrder" ASC, "createdAt" ASC`);
+      } catch (err) {
+        console.warn("DB notice (Product.findMany): using fallback store:", formatDbError(err));
+        return [];
+      }
+    },
+    findUnique: async ({ where }: { where: { id: string } }) => {
+      try {
+        const rows = await runQuery(`SELECT * FROM "Product" WHERE "id"=$1 LIMIT 1`, [where.id]);
+        return rows[0] ?? null;
+      } catch (err) {
+        console.warn("DB notice (Product.findUnique): using fallback store:", formatDbError(err));
+        return null;
+      }
+    },
+    upsert: async ({ where, update, create }: any) => {
+      const d = { ...create, ...update };
+      try {
+        await runQuery(
+          `INSERT INTO "Product" ("id","name","weight","icon","imageUrl","sortOrder")
+           VALUES ($1,$2,$3,$4,$5,$6)
+           ON CONFLICT ("id") DO UPDATE SET
+             "name"=$2,"weight"=$3,"icon"=$4,"imageUrl"=$5,"sortOrder"=$6,"updatedAt"=NOW()`,
+          [where.id, d.name, d.weight || "", d.icon || "🥩", d.imageUrl || "", d.sortOrder ?? 0]
+        );
+      } catch (err) {
+        console.warn("DB notice (Product.upsert):", formatDbError(err));
+      }
+      return { id: where.id, ...d };
     },
   },
 

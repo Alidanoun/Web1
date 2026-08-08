@@ -28,11 +28,19 @@ export async function GET() {
     dbClicks  = fallbackStore.orderClicks;
   }
 
-  // Scans per product
+  // Scans per product and QR vs Direct counts
   const scans: Record<string, number> = {};
+  let qrScansCount = 0;
+  let directVisitsCount = 0;
+
   dbScans.forEach((s) => {
     const p = (s.product || "home").toLowerCase();
     scans[p] = (scans[p] || 0) + 1;
+    if (s.source === "qr") {
+      qrScansCount++;
+    } else {
+      directVisitsCount++;
+    }
   });
 
   // Ratings aggregation
@@ -67,6 +75,9 @@ export async function GET() {
       dbConnected,
       dbError: dbError || null,
       scans,
+      qrScansCount,
+      directVisitsCount,
+      totalScansCount: dbScans.length,
       ratings,
       leads: {
         total: dbLeads.length,
@@ -76,6 +87,7 @@ export async function GET() {
       recentScans: dbScans.slice(0, 20).map((s) => ({
         id: s.id,
         product: s.product,
+        source: s.source || "direct",
         createdAt: s.createdAt?.toISOString?.() || String(s.createdAt),
       })),
       recentRatings: dbRatings.slice(0, 20).map((r) => ({

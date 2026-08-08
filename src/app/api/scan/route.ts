@@ -3,17 +3,18 @@ import { prisma, ensureTablesExist } from "@/lib/db";
 
 export async function POST(req: Request) {
   try {
-    const { product } = await req.json();
+    const { product, source } = await req.json();
 
     if (!product || typeof product !== "string") {
       return NextResponse.json({ error: "معرف المنتج مطلوب" }, { status: 400 });
     }
 
     const cleanProduct = product.trim().toLowerCase();
+    const scanSource = source === "qr" ? "qr" : "direct";
     const id = `scan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
     await ensureTablesExist();
-    await prisma.scan.create({ data: { id, product: cleanProduct } });
+    await prisma.scan.create({ data: { id, product: cleanProduct, source: scanSource } });
 
     return NextResponse.json({ success: true, id }, { status: 200 });
   } catch (error) {

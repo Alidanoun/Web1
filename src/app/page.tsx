@@ -4,31 +4,42 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import LeadForm from "@/components/LeadForm";
 import ScanTracker from "@/components/ScanTracker";
-import { recipes as staticRecipes } from "@/data/recipes";
 
-// Force Vercel production rebuild with DATABASE_URL
-interface DisplayRecipe {
+interface Product {
   id: string;
-  title: string;
-  category: string;
-  meatType: "meat" | "chicken";
-  cuisine: "arabic" | "international";
-  description: string;
-  icon?: string;
+  name: string;
+  weight: string;
+  icon: string;
   imageUrl?: string;
+  sortOrder: number;
 }
 
+const STATIC_PRODUCTS: Product[] = [
+  { id: "katef-kharouf", name: "كتف خاروف بلدي", weight: "1 كيلو", icon: "🐑", sortOrder: 1 },
+  { id: "lahma-mafrouma-khashna", name: "لحمه مفرومه خشنه طازجه", weight: "500 غم", icon: "🥩", sortOrder: 2 },
+  { id: "lahma-mafrouma-naema", name: "لحمه مفرومه ناعمه طازجه", weight: "500 غم", icon: "🥩", sortOrder: 3 },
+  { id: "lahma-mafrouma-ejel", name: "لحمه مفرومه عجل مع خاروف بلدي طازج", weight: "500 غم", icon: "🥩", sortOrder: 4 },
+  { id: "ras-asfour", name: "راس عصفور عجل طازج", weight: "500 غم", icon: "🍖", sortOrder: 5 },
+  { id: "ribs", name: "ريش خارووف طازج", weight: "500 غم", icon: "🍖", sortOrder: 6 },
+  { id: "burger", name: "برغر لحم طازج", weight: "500 غم", icon: "🍔", sortOrder: 7 },
+  { id: "chinese", name: "تشاينيز عجل طازج", weight: "500 غم", icon: "🥘", sortOrder: 8 },
+  { id: "ribeye-steak", name: "رب اي ستيك", weight: "500 غم", icon: "🥩", sortOrder: 9 },
+  { id: "kofta", name: "كفته لحم عجل مع خروف", weight: "500 غم", icon: "🥘", sortOrder: 10 },
+  { id: "filet-steak", name: "ستيك فيليه طازج", weight: "500 غم", icon: "🥩", sortOrder: 11 },
+  { id: "liyeh", name: "ليه خاروف بلدي", weight: "250 غم", icon: "🐑", sortOrder: 12 },
+  { id: "sausage", name: "سجق لحم بقري بلدي", weight: "500 غم", icon: "🌭", sortOrder: 13 },
+  { id: "fakheth-kharouf", name: "فخذ خاروف بلدي", weight: "1 كيلو", icon: "🐑", sortOrder: 14 },
+  { id: "adla3", name: "اضلاع خاروف بلدي", weight: "500 غم", icon: "🍖", sortOrder: 15 },
+  { id: "burger-box", name: "برغر بوكس", weight: "", icon: "📦", sortOrder: 16 },
+  { id: "shish-box", name: "شيش بوكس", weight: "", icon: "📦", sortOrder: 17 },
+  { id: "kebab-box", name: "كباب بوكس", weight: "", icon: "📦", sortOrder: 18 },
+];
+
 export default function HomePage() {
-  const [selectedMeatType, setSelectedMeatType] = useState<string>("meat");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [recipesList, setRecipesList] = useState<DisplayRecipe[]>([]);
+  const [productsList, setProductsList] = useState<Product[]>([]);
   const [settings, setSettings] = useState({
     siteTitle: "ملاحم ومطاعم المركزية",
     siteSubtitle: "اختر صنف اللحوم أو الدجاج المفضل لديك واكتشف أسرار تتبيل وطهي أصنافنا الفاخرة.",
-    meatTabLabel: "قسم اللحوم الحمراء",
-    chickenTabLabel: "قسم الدجاج والطيور",
-    allTabLabel: "جميع الأصناف",
-    customSections: [] as { id: string; name: string; icon: string }[],
   });
 
   useEffect(() => {
@@ -37,102 +48,29 @@ export default function HomePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.settings) {
-          let customParsed = [];
-          if (data.settings.customSections) {
-            try {
-              customParsed = JSON.parse(data.settings.customSections);
-            } catch (e) {}
-          }
           setSettings((prev) => ({
             ...prev,
             ...data.settings,
-            customSections: Array.isArray(customParsed) ? customParsed : [],
           }));
         }
       })
       .catch((err) => console.error("Failed to load settings:", err));
 
-    // Fetch live recipes from database (with static fallback)
-    fetch("/api/recipes")
+    // Fetch live products from database (with static fallback)
+    fetch("/api/products")
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.recipes) {
-          const formatted: DisplayRecipe[] = Object.keys(data.recipes).map((key) => {
-            const r = data.recipes[key];
-            let icon = r.icon || "";
-            if (!icon) {
-              if (r.meatType === "chicken") {
-                icon = "🍗";
-              } else if (r.category?.includes("برغر") || r.id?.includes("burger")) {
-                icon = "🍔";
-              } else if (r.category?.includes("كباب") || r.id?.includes("kebab")) {
-                icon = "🔥";
-              } else if (r.category?.includes("ريش") || r.id?.includes("ribs")) {
-                icon = "🍖";
-              } else if (r.category?.includes("كفتة") || r.id?.includes("kofta")) {
-                icon = "🥘";
-              } else {
-                icon = "🥩";
-              }
-            }
-
-            return {
-              id: r.id,
-              title: r.title,
-              category: r.category || "عام",
-              meatType: r.meatType || "meat",
-              cuisine: r.cuisine || "arabic",
-              description: r.description || "",
-              icon,
-              imageUrl: r.imageUrl || "",
-            };
-          });
-          setRecipesList(formatted);
+        if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+          setProductsList(data.products);
         } else {
-          fallbackStatic();
+          setProductsList(STATIC_PRODUCTS);
         }
       })
       .catch((err) => {
-        console.error("Failed to load recipes from API:", err);
-        fallbackStatic();
+        console.error("Failed to load products from API:", err);
+        setProductsList(STATIC_PRODUCTS);
       });
   }, []);
-
-  const fallbackStatic = () => {
-    const formatted: DisplayRecipe[] = Object.keys(staticRecipes).map((key) => {
-      const r = staticRecipes[key];
-      let icon = r.meatType === "chicken" ? "🍗" : "🥩";
-      if (r.category.includes("برغر") || r.id.includes("burger")) icon = "🍔";
-      if (r.category.includes("كباب")) icon = "🔥";
-      if (r.category.includes("ريش")) icon = "🍖";
-      if (r.category.includes("كفتة")) icon = "🥘";
-      return {
-        id: r.id,
-        title: r.title,
-        category: r.category,
-        meatType: r.meatType || "meat",
-        cuisine: r.cuisine,
-        description: r.description,
-        icon,
-      };
-    });
-    setRecipesList(formatted);
-  };
-
-  // 1. Filter by Main Section (Meat vs Chicken vs Custom Sections vs All)
-  const meatFiltered = selectedMeatType === "all"
-    ? recipesList
-    : recipesList.filter((r) => r.meatType === selectedMeatType || r.category === selectedMeatType);
-
-  // 2. Extract available subcategories for current meat type selection
-  const availableCategories = Array.from(
-    new Set(meatFiltered.map((r) => r.category))
-  );
-
-  // 3. Filter by Subcategory if selected
-  const finalFiltered = selectedCategory === "all"
-    ? meatFiltered
-    : meatFiltered.filter((r) => r.category === selectedCategory);
 
   return (
     <div className="container animate-fade-in">
@@ -176,7 +114,6 @@ export default function HomePage() {
         </p>
       </header>
 
-      {/* Main Meat vs Chicken Filter Tabs */}
       <main>
         <div style={{ marginBottom: "1.5rem", textAlign: "center" }}>
           <h3
@@ -187,129 +124,16 @@ export default function HomePage() {
               marginBottom: "0.75rem",
             }}
           >
-            🎯 حدد صنف المشاوي والوصفات المطلوبة:
+            🎯 حدد صنف اللحوم لعرض وصفات التحضير:
           </h3>
-
-          {/* Primary Type Selection Tabs */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "0.5rem",
-              flexWrap: "wrap",
-              marginBottom: "1rem",
-            }}
-          >
-            <button
-              className={`doneness-tab ${selectedMeatType === "meat" ? "active" : ""}`}
-              onClick={() => {
-                setSelectedMeatType("meat");
-                setSelectedCategory("all");
-              }}
-              style={{ padding: "0.65rem 1.35rem", fontSize: "0.95rem", fontWeight: 800 }}
-            >
-              🥩 {settings.meatTabLabel} ({recipesList.filter(r => r.meatType === "meat").length})
-            </button>
-
-            <button
-              className={`doneness-tab ${selectedMeatType === "chicken" ? "active" : ""}`}
-              onClick={() => {
-                setSelectedMeatType("chicken");
-                setSelectedCategory("all");
-              }}
-              style={{ padding: "0.65rem 1.35rem", fontSize: "0.95rem", fontWeight: 800 }}
-            >
-              🍗 {settings.chickenTabLabel} ({recipesList.filter(r => r.meatType === "chicken").length})
-            </button>
-
-            {/* Custom Main Section Tabs added by Admin */}
-            {settings.customSections.map((sec) => (
-              <button
-                key={sec.id}
-                className={`doneness-tab ${selectedMeatType === sec.id ? "active" : ""}`}
-                onClick={() => {
-                  setSelectedMeatType(sec.id);
-                  setSelectedCategory("all");
-                }}
-                style={{ padding: "0.65rem 1.35rem", fontSize: "0.95rem", fontWeight: 800 }}
-              >
-                {sec.icon} {sec.name} ({recipesList.filter(r => r.meatType === sec.id || r.category === sec.id).length})
-              </button>
-            ))}
-
-            <button
-              className={`doneness-tab ${selectedMeatType === "all" ? "active" : ""}`}
-              onClick={() => {
-                setSelectedMeatType("all");
-                setSelectedCategory("all");
-              }}
-              style={{ padding: "0.65rem 1rem", fontSize: "0.85rem" }}
-            >
-              🌟 {settings.allTabLabel} ({recipesList.length})
-            </button>
-          </div>
-
-          {/* Secondary Subcategories Pills (تظهر دائماً عند وجود تصنيفات) */}
-          {availableCategories.length > 0 && (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                gap: "0.4rem",
-                flexWrap: "wrap",
-                background: "rgba(255,255,255,0.03)",
-                padding: "0.5rem",
-                borderRadius: "12px",
-                border: "1px solid rgba(255,255,255,0.06)",
-                maxWidth: "600px",
-                margin: "0 auto",
-              }}
-            >
-              <button
-                onClick={() => setSelectedCategory("all")}
-                style={{
-                  background: selectedCategory === "all" ? "var(--color-brand-gold)" : "transparent",
-                  color: selectedCategory === "all" ? "white" : "var(--color-text-muted)",
-                  border: "none",
-                  borderRadius: "20px",
-                  padding: "0.3rem 0.85rem",
-                  fontSize: "0.8rem",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                الكل
-              </button>
-              {availableCategories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  style={{
-                    background: selectedCategory === cat ? "var(--color-brand-gold)" : "transparent",
-                    color: selectedCategory === cat ? "white" : "var(--color-text-muted)",
-                    border: "none",
-                    borderRadius: "20px",
-                    padding: "0.3rem 0.85rem",
-                    fontSize: "0.8rem",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
-        {/* Recipes Grid */}
+        {/* Products Grid */}
         <div className="grid-categories" style={{ marginBottom: "2rem" }}>
-          {finalFiltered.map((recipe) => (
+          {productsList.map((product) => (
             <Link
-              key={recipe.id}
-              href={`/${recipe.id}`}
+              key={product.id}
+              href={`/${product.id}`}
               style={{ textDecoration: "none", color: "inherit" }}
               className="card animate-slide-up"
             >
@@ -322,10 +146,10 @@ export default function HomePage() {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "1rem", textAlign: "right" }}>
-                  {recipe.imageUrl ? (
+                  {product.imageUrl ? (
                     <img
-                      src={recipe.imageUrl}
-                      alt={recipe.title}
+                      src={product.imageUrl}
+                      alt={product.name}
                       loading="lazy"
                       style={{
                         width: 56,
@@ -337,30 +161,17 @@ export default function HomePage() {
                       }}
                     />
                   ) : (
-                    <span style={{ fontSize: "2.3rem", flexShrink: 0 }}>{recipe.icon}</span>
+                    <span style={{ fontSize: "2.5rem", flexShrink: 0 }}>{product.icon}</span>
                   )}
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.2rem", flexWrap: "wrap" }}>
-                      <h4 style={{ fontWeight: 800, fontSize: "1.05rem", color: "white" }}>{recipe.title}</h4>
-                      <span className="badge badge-gold" style={{ fontSize: "0.65rem" }}>
-                        {recipe.category}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "0.65rem",
-                          background: recipe.meatType === "chicken" ? "rgba(255, 193, 7, 0.2)" : "rgba(223, 138, 39, 0.2)",
-                          color: recipe.meatType === "chicken" ? "#ffc107" : "var(--color-brand-gold)",
-                          padding: "0.15rem 0.4rem",
-                          borderRadius: "4px",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {recipe.meatType === "chicken" ? "🍗 دجاج" : "🥩 لحم"}
-                      </span>
+                      <h4 style={{ fontWeight: 800, fontSize: "1.1rem", color: "white" }}>{product.name}</h4>
+                      {product.weight && (
+                        <span className="badge badge-gold" style={{ fontSize: "0.7rem", marginTop: "0.2rem" }}>
+                          {product.weight}
+                        </span>
+                      )}
                     </div>
-                    <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", marginTop: "0.15rem", lineHeight: 1.4 }}>
-                      {recipe.description}
-                    </p>
                   </div>
                 </div>
                 <span
