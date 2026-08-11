@@ -29,12 +29,14 @@ export default function OrderModal({ product }: OrderModalProps) {
     });
   };
 
+  const phoneNum = process.env.NEXT_PUBLIC_CONTACT_PHONE || "065777999";
+
   const platforms = [
     {
-      name: "رقم خدمة العملاء المباشر",
+      name: `رقم خدمة العملاء المباشر (${phoneNum})`,
       icon: "📞",
       description: "اتصل بنا هاتفياً لترتيب طلبك وتلبية طلباتك الخاصة",
-      url: process.env.NEXT_PUBLIC_CONTACT_PHONE ? `tel:${process.env.NEXT_PUBLIC_CONTACT_PHONE}` : "tel:+962790000000",
+      url: `tel:${phoneNum}`,
       key: "phone",
     },
   ];
@@ -75,7 +77,7 @@ export default function OrderModal({ product }: OrderModalProps) {
                 fontSize: "0.85rem",
                 color: "var(--color-text-muted)",
                 textAlign: "center",
-                marginBottom: "1.5rem",
+                marginBottom: "1.25rem",
               }}
             >
               اتصل بنا مباشرة لطلب الوجبة جاهزة من مطاعم المركزية:
@@ -98,29 +100,32 @@ export default function OrderModal({ product }: OrderModalProps) {
                     display: "flex",
                     alignItems: "center",
                     gap: "1rem",
-                    padding: "0.875rem 1rem",
-                    background: "rgba(255, 255, 255, 0.03)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "12px",
+                    padding: "1rem",
+                    background: "rgba(223, 138, 39, 0.08)",
+                    border: "1px solid var(--color-brand-gold)",
+                    borderRadius: "14px",
                     cursor: "pointer",
                     transition: "all 0.25s ease",
                     outline: "none",
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = "var(--color-brand-gold)";
-                    e.currentTarget.style.background = "rgba(223, 138, 39, 0.05)";
+                    e.currentTarget.style.background = "rgba(223, 138, 39, 0.15)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "var(--color-border)";
-                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.03)";
+                    e.currentTarget.style.borderColor = "var(--color-brand-gold)";
+                    e.currentTarget.style.background = "rgba(223, 138, 39, 0.08)";
                   }}
                 >
-                  <span style={{ fontSize: "1.75rem" }}>{platform.icon}</span>
+                  <span style={{ fontSize: "2rem" }}>{platform.icon}</span>
                   <div style={{ textAlign: "right", minWidth: 0, flex: 1 }}>
-                    <h5 style={{ fontWeight: 700, fontSize: "0.9rem", color: "white" }}>
+                    <h5 style={{ fontWeight: 800, fontSize: "1rem", color: "white" }}>
                       {platform.name}
                     </h5>
-                    <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+                    <p style={{ fontSize: "0.8rem", color: "var(--color-brand-gold)", fontWeight: 700, marginTop: "0.2rem" }}>
+                      📞 {phoneNum}
+                    </p>
+                    <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", marginTop: "0.15rem" }}>
                       {platform.description}
                     </p>
                   </div>
