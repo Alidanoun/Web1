@@ -78,8 +78,8 @@ const NEON_POOLER_URL = "postgresql://neondb_owner:npg_EpbOdSm3P7ra@ep-weathered
 
 function getDbUrl(): string {
   let url = process.env.DATABASE_URL;
-  // Automatically override missing or port-6543 timing-out Supabase URLs to active Neon HTTP URL
-  if (!url || url.includes("6543") || url.includes("supabase.com") || url.includes("supabase.co") || url.includes("YOUR_ACTUAL_PASSWORD")) {
+  // Automatically override missing, old credentials (Zh4MX1Swyoxb), or port-6543 timing-out URLs to active Neon HTTP URL
+  if (!url || url.includes("Zh4MX1Swyoxb") || url.includes("6543") || url.includes("supabase.com") || url.includes("supabase.co") || url.includes("YOUR_ACTUAL_PASSWORD")) {
     url = NEON_POOLER_URL;
   }
   if (url.includes("@@")) {
