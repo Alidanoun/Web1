@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma, ensureTablesExist, runQuery } from "@/lib/db";
+import { recipes as staticRecipes } from "@/data/recipes";
 import ScanTracker from "@/components/ScanTracker";
 import LeadForm from "@/components/LeadForm";
 import type { Viewport } from "next";
@@ -53,12 +54,41 @@ export default async function ProductRecipesPage({ params, searchParams }: PageP
     productData = found as any;
   }
 
-  // 2. Get recipes linked to this product
+  // 2. Get recipes linked to this product (DB + static fallbacks)
   let recipes: any[] = [];
   try {
-    recipes = await runQuery(`SELECT * FROM "Recipe" WHERE "productId"=$1 ORDER BY "updatedAt" DESC`, [productId]);
+    const dbRows = await runQuery(`SELECT * FROM "Recipe" WHERE "productId"=$1 ORDER BY "updatedAt" DESC`, [productId]);
+    if (Array.isArray(dbRows)) {
+      recipes = dbRows.map(r => ({
+        id: r.id,
+        title: r.title,
+        category: r.category,
+        productId: r.productId || productId,
+        icon: r.icon || "🥩",
+        imageUrl: r.imageUrl || "",
+        description: r.description,
+        prepTime: r.prepTime,
+        cookTime: r.cookTime,
+        difficulty: r.difficulty,
+        videoPlaceholder: r.videoPlaceholder,
+        videoUrl: r.videoUrl,
+        ingredients: typeof r.ingredients === "string" ? JSON.parse(r.ingredients || "[]") : (r.ingredients || []),
+        instructions: typeof r.instructions === "string" ? JSON.parse(r.instructions || "[]") : (r.instructions || []),
+        tips: typeof r.tips === "string" ? JSON.parse(r.tips || "[]") : (r.tips || []),
+        marinade: r.marinade,
+      }));
+    }
   } catch (err) {
-    console.error("Failed to fetch recipes for product:", err);
+    console.error("Failed to fetch recipes for product from DB:", err);
+  }
+
+  // Merge static recipes for this product so they always show even if DB is empty
+  const staticProductRecipes = Object.values(staticRecipes).filter(r => r.productId === productId);
+  const dbRecipeIds = new Set(recipes.map(r => r.id));
+  for (const sr of staticProductRecipes) {
+    if (!dbRecipeIds.has(sr.id)) {
+      recipes.push(sr);
+    }
   }
 
   // 3. Render
