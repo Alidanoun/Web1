@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma, ensureTablesExist } from "@/lib/db";
-import { POST as resetPost } from "../reset/route";
+import { recipes } from "@/data/recipes";
 
 export async function POST(req: Request) {
   try {
@@ -36,8 +36,54 @@ export async function POST(req: Request) {
       });
     }
 
-    // Call existing reset logic
-    return await resetPost();
+    // ── Seed Recipes (from Excel mapped recipes) ──
+    for (const key of Object.keys(recipes)) {
+      const r = (recipes as any)[key];
+      await prisma.recipe.upsert({
+        where: { id: r.id },
+        update: {
+          title: r.title,
+          category: r.category,
+          productId: r.productId || "",
+          icon: r.icon || "",
+          imageUrl: r.imageUrl || "",
+          meatType: r.meatType || "meat",
+          cuisine: r.cuisine || "arabic",
+          description: r.description,
+          prepTime: r.prepTime,
+          cookTime: r.cookTime,
+          difficulty: r.difficulty,
+          videoPlaceholder: r.videoPlaceholder,
+          videoUrl: r.videoUrl || "",
+          ingredients: JSON.stringify(r.ingredients),
+          instructions: JSON.stringify(r.instructions),
+          tips: JSON.stringify(r.tips),
+          marinade: r.marinade,
+        },
+        create: {
+          id: r.id,
+          title: r.title,
+          category: r.category,
+          productId: r.productId || "",
+          icon: r.icon || "",
+          imageUrl: r.imageUrl || "",
+          meatType: r.meatType || "meat",
+          cuisine: r.cuisine || "arabic",
+          description: r.description,
+          prepTime: r.prepTime,
+          cookTime: r.cookTime,
+          difficulty: r.difficulty,
+          videoPlaceholder: r.videoPlaceholder,
+          videoUrl: r.videoUrl || "",
+          ingredients: JSON.stringify(r.ingredients),
+          instructions: JSON.stringify(r.instructions),
+          tips: JSON.stringify(r.tips),
+          marinade: r.marinade,
+        },
+      });
+    }
+
+    return NextResponse.json({ success: true, message: "تمت إعادة ضبط المنتجات والوصفات بنجاح!" }, { status: 200 });
   } catch (error) {
     console.error("Error in seed route:", error);
     return NextResponse.json({ error: String(error) }, { status: 500 });

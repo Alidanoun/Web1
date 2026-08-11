@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma, ensureTablesExist, runQuery } from "@/lib/db";
+import { recipes as staticRecipes } from "@/data/recipes";
 
-// GET /api/recipes - Fetch all recipes from DB
+// GET /api/recipes - Fetch all recipes from DB (or fallback to static data)
 export async function GET() {
   try {
     await ensureTablesExist();
@@ -34,10 +35,10 @@ export async function GET() {
       return NextResponse.json({ success: true, recipes: formatted }, { status: 200 });
     }
 
-    return NextResponse.json({ success: true, recipes: {} }, { status: 200 });
+    return NextResponse.json({ success: true, recipes: staticRecipes }, { status: 200 });
   } catch (error) {
     console.error("Error fetching recipes:", error);
-    return NextResponse.json({ success: true, recipes: {} }, { status: 200 });
+    return NextResponse.json({ success: true, recipes: staticRecipes }, { status: 200 });
   }
 }
 
