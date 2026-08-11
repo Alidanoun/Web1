@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma, ensureTablesExist, runQuery } from "@/lib/db";
 import { recipes as staticRecipes } from "@/data/recipes";
 
-// GET /api/recipes - Fetch all recipes from DB (or fallback to static data)
+// GET /api/recipes - Fetch all recipes from DB (merged with static defaults)
 export async function GET() {
   try {
     await ensureTablesExist();
     const dbRecipes = await prisma.recipe.findMany();
+    
+    let formatted: Record<string, any> = {};
     if (dbRecipes && dbRecipes.length > 0) {
-      const formatted = dbRecipes.reduce((acc: Record<string, any>, r: any) => {
+      formatted = dbRecipes.reduce((acc: Record<string, any>, r: any) => {
         acc[r.id] = {
           id: r.id,
           title: r.title,
@@ -24,18 +26,19 @@ export async function GET() {
           difficulty: r.difficulty,
           videoPlaceholder: r.videoPlaceholder,
           videoUrl: r.videoUrl,
-          ingredients: JSON.parse(r.ingredients || "[]"),
-          instructions: JSON.parse(r.instructions || "[]"),
-          tips: JSON.parse(r.tips || "[]"),
+          ingredients: typeof r.ingredients === "string" ? JSON.parse(r.ingredients || "[]") : (r.ingredients || []),
+          instructions: typeof r.instructions === "string" ? JSON.parse(r.instructions || "[]") : (r.instructions || []),
+          tips: typeof r.tips === "string" ? JSON.parse(r.tips || "[]") : (r.tips || []),
           marinade: r.marinade,
           doneness: r.doneness ? JSON.parse(r.doneness) : undefined,
         };
         return acc;
       }, {} as Record<string, any>);
-      return NextResponse.json({ success: true, recipes: formatted }, { status: 200 });
     }
 
-    return NextResponse.json({ success: true, recipes: staticRecipes }, { status: 200 });
+    // Always merge static recipes with DB recipes so edited recipes override static ones, while keeping all available recipes
+    const mergedRecipes = { ...staticRecipes, ...formatted };
+    return NextResponse.json({ success: true, recipes: mergedRecipes }, { status: 200 });
   } catch (error) {
     console.error("Error fetching recipes:", error);
     return NextResponse.json({ success: true, recipes: staticRecipes }, { status: 200 });
