@@ -5,6 +5,6 @@
   "pages_build_output_dir": ".vercel/output/static",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
-    "DATABASE_URL": "postgresql://neondb_owner:npg_Zh4MX1Swyoxb@ep-weathered-forest-ax9ru7rm-pooler.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require"
+    "DATABASE_URL": "postgresql://neondb_owner:npg_EpbOdSm3P7ra@ep-weathered-forest-ax9ru7rm-pooler.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require"
   }
 }

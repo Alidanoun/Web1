@@ -73,8 +73,8 @@ export function formatDbError(err: any): string {
     : str;
 }
 
-const NEON_DB_URL = "postgresql://neondatabase_owner:npg_Zh4MX1Swyoxb@ep-weathered-forest-ax9ru7rm.us-east-2.aws.neon.tech/neondb?sslmode=require";
-const NEON_POOLER_URL = "postgresql://neondb_owner:npg_Zh4MX1Swyoxb@ep-weathered-forest-ax9ru7rm-pooler.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require";
+const NEON_DB_URL = "postgresql://neondb_owner:npg_EpbOdSm3P7ra@ep-weathered-forest-ax9ru7rm.us-east-2.aws.neon.tech/neondb?sslmode=require";
+const NEON_POOLER_URL = "postgresql://neondb_owner:npg_EpbOdSm3P7ra@ep-weathered-forest-ax9ru7rm-pooler.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require";
 
 function getDbUrl(): string {
   let url = process.env.DATABASE_URL;
