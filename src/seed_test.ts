@@ -20,9 +20,7 @@ const products = [
   { id: "sausage", name: "سجق لحم بقري بلدي", weight: "", icon: "🌭", sortOrder: 13 },
   { id: "fakheth-kharouf", name: "فخذ خاروف بلدي", weight: "", icon: "🐑", sortOrder: 14 },
   { id: "adla3", name: "اضلاع خاروف بلدي", weight: "", icon: "🍖", sortOrder: 15 },
-  { id: "burger-box", name: "برغر بوكس", weight: "", icon: "📦", sortOrder: 16 },
-  { id: "shish-box", name: "شيش بوكس", weight: "", icon: "📦", sortOrder: 17 },
-  { id: "kebab-box", name: "كباب بوكس", weight: "", icon: "📦", sortOrder: 18 },
+
 ];
 
 async function main() {
