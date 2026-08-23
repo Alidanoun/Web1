@@ -141,7 +141,7 @@ export default function LeadForm() {
             </button>
           </div>
           <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
-            يصلك رمز الخصم أيضاً عبر رقم هاتفك المسجل ({contact}) قريباً.
+            يرجى التواصل مع قسم الكول سنتر على الرقم التالي 065777999 للاستفسار عن الخصم
           </p>
         </div>
       ) : (
