@@ -131,11 +131,18 @@ export function getSql() {
 
 // ─── Table bootstrap ──────────────────────────────────────────────────────────
 let _tablesEnsured = false;
+let _tablesEnsuring: Promise<void> | null = null; // lock to prevent concurrent setup
 
 export async function ensureTablesExist() {
+  // Fast path: already done in this Worker instance
   if (_tablesEnsured) return;
 
-  await runQuery(`
+  // If another concurrent request is already setting up, wait for it
+  if (_tablesEnsuring) return _tablesEnsuring;
+
+  // First request: run setup and lock out others
+  _tablesEnsuring = (async () => {
+    await runQuery(`
     CREATE TABLE IF NOT EXISTS "Scan" (
       "id"        TEXT PRIMARY KEY,
       "product"   TEXT NOT NULL,
@@ -245,7 +252,10 @@ export async function ensureTablesExist() {
 
   await runQuery(`ALTER TABLE "Recipe" ADD COLUMN IF NOT EXISTS "productId" TEXT DEFAULT NULL`);
 
-  _tablesEnsured = true;
+    _tablesEnsured = true;
+  })();
+
+  return _tablesEnsuring;
 }
 
 // ─── Typed query helpers (Prisma-compatible API) ───────────────────────────────
