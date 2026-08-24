@@ -12,6 +12,9 @@ const DEFAULT_SETTINGS: Record<string, string> = {
 // In-memory fallback cache so settings work seamlessly even without live DB
 const memorySettings: Record<string, string> = { ...DEFAULT_SETTINGS };
 
+// Cache settings at the Cloudflare edge for 5 minutes (they rarely change).
+const CACHE_SECONDS = 300;
+
 export async function GET() {
   try {
     await ensureTablesExist();
@@ -25,7 +28,14 @@ export async function GET() {
     console.error("DB notice (GET settings): using memory cache.", error);
   }
 
-  return NextResponse.json({ success: true, settings: memorySettings });
+  return NextResponse.json(
+    { success: true, settings: memorySettings },
+    {
+      headers: {
+        "Cache-Control": `public, s-maxage=${CACHE_SECONDS}, stale-while-revalidate=60`,
+      },
+    }
+  );
 }
 
 export async function POST(request: Request) {
