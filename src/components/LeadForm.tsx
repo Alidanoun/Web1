@@ -7,6 +7,7 @@ export default function LeadForm() {
   const [contact, setContact] = useState("");
   const [promoCode, setPromoCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,16 +53,49 @@ export default function LeadForm() {
     }
   };
 
+  const handleCopy = () => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(promoCode)
+        .then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        })
+        .catch(() => {
+          fallbackCopy();
+        });
+    } else {
+      fallbackCopy();
+    }
+  };
+
+  const fallbackCopy = () => {
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = promoCode;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Ignore
+    }
+  };
+
   return (
     <div className="card" style={{ border: "1px dashed rgba(223, 138, 39, 0.4)" }}>
       {promoCode ? (
-        /* ✅ SUCCESS: رسالة التهنئة بعد إدخال البيانات */
+        /* ✅ SUCCESS: رسالة التهنئة مع كود الخصم المخصص */
         <div className="animate-fade-in" style={{ textAlign: "center", padding: "1.25rem 0" }}>
           <div style={{ fontSize: "3.5rem", marginBottom: "0.75rem" }}>🎉</div>
           <h3
             style={{
               fontWeight: 900,
-              marginBottom: "1rem",
+              marginBottom: "0.75rem",
               color: "var(--color-brand-gold)",
               fontSize: "1.4rem",
               lineHeight: 1.5,
@@ -69,6 +103,47 @@ export default function LeadForm() {
           >
             تهانينا! لقد حصلت على خصم خاص بك.
           </h3>
+
+          {/* 🎟️ صندوق كود الخصم */}
+          <div
+            style={{
+              border: "2px dashed var(--color-brand-gold)",
+              borderRadius: "12px",
+              padding: "0.85rem 1.25rem",
+              background: "#1c1208",
+              fontSize: "1.3rem",
+              fontWeight: 900,
+              letterSpacing: "2px",
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              margin: "1.25rem auto",
+              maxWidth: "340px",
+              direction: "ltr",
+            }}
+          >
+            <span style={{ color: "var(--color-brand-gold)", marginLeft: "0.5rem" }}>{promoCode}</span>
+            <button
+              onClick={handleCopy}
+              type="button"
+              style={{
+                background: copied ? "var(--color-success)" : "var(--color-brand-gold)",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                padding: "0.45rem 0.9rem",
+                fontSize: "0.85rem",
+                fontWeight: 800,
+                cursor: "pointer",
+                fontFamily: "var(--font-cairo)",
+                transition: "all 0.2s ease",
+              }}
+            >
+              {copied ? "تم النسخ! ✓" : "نسخ الكود"}
+            </button>
+          </div>
+
           <p
             style={{
               fontSize: "0.95rem",
@@ -89,7 +164,7 @@ export default function LeadForm() {
             >
               065777999
             </a>{" "}
-            وتنفيذ الطلب من خلاله للحصول على الخصم المخصص لك.
+            وتنفيذ الطلب من خلاله وتزويدهم بكود الخصم للحصول على الخصم المخصص لك.
           </p>
           <p
             style={{
