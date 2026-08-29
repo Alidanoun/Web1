@@ -28,51 +28,37 @@ export async function GET(req: Request) {
     const startDateParam = searchParams.get("startDate"); // YYYY-MM-DD
     const endDateParam = searchParams.get("endDate"); // YYYY-MM-DD
 
-    let dateFilter: any = {};
     let dateRangeText = "كافة الأوقات";
-
     if (startDateParam || endDateParam) {
-      const gte = startDateParam ? new Date(`${startDateParam}T00:00:00.000Z`) : new Date("2020-01-01");
-      const lte = endDateParam ? new Date(`${endDateParam}T23:59:59.999Z`) : new Date();
-      dateFilter = {
-        createdAt: {
-          gte,
-          lte,
-        },
-      };
       dateRangeText = startDateParam === endDateParam
         ? `بتاريخ: ${startDateParam}`
         : `من ${startDateParam || "البداية"} إلى ${endDateParam || "اليوم"}`;
     }
 
-    // 1. Fetch Leads
-    const leads = await prisma.lead.findMany({
-      where: dateFilter,
-      orderBy: { createdAt: "desc" },
-    });
+    // In-memory date filter helper to guarantee timezone resilience
+    const isWithinRange = (dateInput: any) => {
+      if (!startDateParam && !endDateParam) return true;
+      if (!dateInput) return true;
+      const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return true;
+      const start = startDateParam ? new Date(`${startDateParam}T00:00:00.000`) : new Date("2020-01-01");
+      const end = endDateParam ? new Date(`${endDateParam}T23:59:59.999`) : new Date("2099-12-31");
+      return d >= start && d <= end;
+    };
 
-    // 2. Fetch Scans
-    const scans = await prisma.scan.findMany({
-      where: dateFilter,
-      orderBy: { createdAt: "desc" },
-    });
+    // 1. Fetch All Tables Safely
+    const rawLeads: any[] = (await prisma.lead.findMany()) || [];
+    const rawScans: any[] = (await prisma.scan.findMany()) || [];
+    const rawRatings: any[] = (await prisma.rating.findMany()) || [];
+    const rawOrderClicks: any[] = (await prisma.orderClick.findMany()) || [];
+    const rawLoyaltyCards: any[] = (await prisma.loyaltyCard.findMany()) || [];
 
-    // 3. Fetch Ratings
-    const ratings = await prisma.rating.findMany({
-      where: dateFilter,
-      orderBy: { createdAt: "desc" },
-    });
-
-    // 4. Fetch Order Clicks
-    const orderClicks = await prisma.orderClick.findMany({
-      where: dateFilter,
-      orderBy: { createdAt: "desc" },
-    });
-
-    // 5. Fetch Loyalty Cards
-    const loyaltyCards = await prisma.loyaltyCard.findMany({
-      orderBy: { points: "desc" },
-    });
+    // Filter by date
+    const leads = rawLeads.filter((l) => isWithinRange(l.createdAt));
+    const scans = rawScans.filter((s) => isWithinRange(s.createdAt));
+    const ratings = rawRatings.filter((r) => isWithinRange(r.createdAt));
+    const orderClicks = rawOrderClicks.filter((o) => isWithinRange(o.createdAt));
+    const loyaltyCards = rawLoyaltyCards; // Loyalty cards represent current state
 
     // Calculate Scans Breakdown
     const scansCountMap: Record<string, number> = {};
@@ -85,23 +71,21 @@ export async function GET(req: Request) {
     const productLabels: Record<string, string> = {
       home: "🏠 الرمز العام (الصفحة الرئيسية)",
       loyalty: "🦁 رمز جمع نقاط الولاء (الملحمة)",
-      ribs: "🥩 ريش غنم بلدي فاخرة",
-      shish: "🍢 شيش طاووق متبل",
-      steak: "🥩 ستيك ريب آي أنجوس",
-      burger: "🍔 برغر لحم بلدي متبل",
-      kabab: "🍢 كباب لحم بلدي مشوي",
-      kofta: "🧆 كفتة بلدي بالصينية",
-      mafroum: "🥩 لحم مفروم بلدي طازج",
-      shafah: "🥩 شقف لحم بلدي للشوي والطبخ",
-      fakhda: "🍗 فخذ خروف بلدي كامل",
-      katf: "🥩 كتف خروف بلدي طازج",
-      raqaba: "🥩 رقبة خروف بلدي",
-      moza: "🥩 موزات لحم بالعظم",
-      wings: "🍗 أجنحة دجاج متبلة",
-      chicken_breast: "🍗 صدور دجاج فيليه طازجة",
-      whole_chicken: "🍗 دجاج كامل طازج",
-      chicken_legs: "🍗 أفخاذ دجاج كاملة",
-      escalope: "🥩 إسكالوب لحم مقرمش",
+      "katef-kharouf": "🐑 كتف خاروف بلدي",
+      "lahma-mafrouma-khashna": "🥩 لحمه مفرومه خشنه طازجه",
+      "lahma-mafrouma-naema": "🥩 لحمه مفرومه ناعمه طازجه",
+      "lahma-mafrouma-ejel": "🥩 لحمه مفرومه عجل مع خاروف بلدي",
+      "ras-asfour": "🍖 راس عصفور عجل طازج",
+      ribs: "🍖 ريش خارووف طازج",
+      burger: "🍔 برغر لحم طازج",
+      chinese: "🥘 تشاينيز عجل طازج",
+      "ribeye-steak": "🥩 رب اي ستيك",
+      kofta: "🥘 كفته لحم عجل مع خروف",
+      "filet-steak": "🥩 ستيك فيليه طازج",
+      liyeh: "🐑 ليه خاروف بلدي",
+      sausage: "🌭 سجق لحم بقري بلدي",
+      "fakheth-kharouf": "🐑 فخذ خاروف بلدي",
+      adla3: "🍖 اضلاع خاروف بلدي",
     };
 
     let filename = `almarkazia_report_${new Date().toISOString().split("T")[0]}.xls`;
