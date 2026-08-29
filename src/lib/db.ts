@@ -506,6 +506,14 @@ export const prisma = {
 
   // ── LoyaltyCard ───────────────────────────────────────────────────────────
   loyaltyCard: {
+    findMany: async () => {
+      try {
+        return await runQuery(`SELECT * FROM "LoyaltyCard" ORDER BY "points" DESC`);
+      } catch (err) {
+        console.warn("DB notice (LoyaltyCard.findMany): using fallback store:", formatDbError(err));
+        return Array.from(fallbackStore.loyaltyCards.values());
+      }
+    },
     findUnique: async ({ where }: { where: { phone: string } }) => {
       try {
         const rows = await runQuery(`SELECT * FROM "LoyaltyCard" WHERE "phone"=$1 LIMIT 1`, [where.phone]);
