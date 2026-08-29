@@ -7,7 +7,6 @@ export default function LeadForm() {
   const [contact, setContact] = useState("");
   const [promoCode, setPromoCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,98 +52,58 @@ export default function LeadForm() {
     }
   };
 
-  const fallbackCopy = () => {
-    try {
-      const textArea = document.createElement("textarea");
-      textArea.value = promoCode;
-      textArea.style.top = "0";
-      textArea.style.left = "0";
-      textArea.style.position = "fixed";
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      const successful = document.execCommand("copy");
-      document.body.removeChild(textArea);
-      if (successful) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } else {
-        setError("يرجى نسخ الكود يدوياً.");
-      }
-    } catch (err) {
-      console.error("Fallback copy failed:", err);
-      setError("يرجى نسخ الكود يدوياً.");
-    }
-  };
-
-  const handleCopy = () => {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(promoCode)
-        .then(() => {
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-        })
-        .catch((err) => {
-          console.error("Clipboard copy failed, using fallback:", err);
-          fallbackCopy();
-        });
-    } else {
-      fallbackCopy();
-    }
-  };
-
   return (
     <div className="card" style={{ border: "1px dashed rgba(223, 138, 39, 0.4)" }}>
       {promoCode ? (
-        <div className="animate-fade-in" style={{ textAlign: "center", padding: "0.5rem 0" }}>
-          <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>🎁</div>
-          <h4 style={{ fontWeight: 800, marginBottom: "0.25rem", color: "var(--color-brand-gold)" }}>
-            أهلاً بك {name}! لقد حصلت على مكافأتك
-          </h4>
-          <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)", marginBottom: "1rem" }}>
-            استخدم هذا الكوبون عند طلبك القادم للحصول على خصم مميز:
-          </p>
-
-          <div
+        /* ✅ SUCCESS: رسالة التهنئة بعد إدخال البيانات */
+        <div className="animate-fade-in" style={{ textAlign: "center", padding: "1.25rem 0" }}>
+          <div style={{ fontSize: "3.5rem", marginBottom: "0.75rem" }}>🎉</div>
+          <h3
             style={{
-              border: "2px dashed var(--color-brand-gold)",
-              borderRadius: "10px",
-              padding: "0.75rem",
-              background: "#1c1208",
-              fontSize: "1.2rem",
-              fontWeight: 800,
-              letterSpacing: "1px",
-              color: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
+              fontWeight: 900,
               marginBottom: "1rem",
-              direction: "ltr",
+              color: "var(--color-brand-gold)",
+              fontSize: "1.4rem",
+              lineHeight: 1.5,
             }}
           >
-            <span style={{ marginLeft: "1rem" }}>{promoCode}</span>
-            <button
-              onClick={handleCopy}
+            تهانينا! لقد حصلت على خصم خاص بك.
+          </h3>
+          <p
+            style={{
+              fontSize: "0.95rem",
+              color: "var(--color-text-muted)",
+              marginBottom: "1.25rem",
+              lineHeight: 1.9,
+            }}
+          >
+            للاستفادة من الخصم، يرجى التواصل على الرقم{" "}
+            <a
+              href="tel:065777999"
               style={{
-                background: "var(--color-brand-gold)",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                padding: "0.35rem 0.75rem",
-                fontSize: "0.8rem",
-                fontWeight: 700,
-                cursor: "pointer",
-                fontFamily: "var(--font-cairo)",
+                color: "var(--color-brand-gold)",
+                fontWeight: 900,
+                textDecoration: "none",
+                fontSize: "1.15rem",
               }}
             >
-              {copied ? "تم النسخ!" : "نسخ الكود"}
-            </button>
-          </div>
-          <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
-            يرجى التواصل مع قسم الكول سنتر على الرقم التالي 065777999 للاستفسار عن الخصم
+              065777999
+            </a>{" "}
+            وتنفيذ الطلب من خلاله للحصول على الخصم المخصص لك.
+          </p>
+          <p
+            style={{
+              fontSize: "0.95rem",
+              fontWeight: 700,
+              color: "var(--color-text)",
+              marginTop: "0.5rem",
+            }}
+          >
+            نتمنى لكم تجربة مميزة! ✨
           </p>
         </div>
       ) : (
+        /* 📝 FORM: نموذج إدخال البيانات */
         <div>
           <h4 style={{ fontWeight: 800, marginBottom: "0.35rem", fontSize: "1.05rem" }}>
             🎁 احصل على مكافأة مميزة وخصم فوري!
