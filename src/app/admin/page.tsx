@@ -242,12 +242,13 @@ export default function AdminDashboard() {
   const handleSeed = async () => {
     setSeedLoading(true);
     try {
-      const res = await fetch("/api/seed", { method: "POST" });
+      const res = await fetch("/api/reset", { method: "POST" });
       if (res.ok) {
-        alert("تم إعادة ضبط البيانات بنجاح!");
+        alert("تم تصفير وإعادة ضبط البيانات والإحصائيات بنجاح!");
         fetchStats();
         fetchProducts();
         fetchRecipes();
+        fetchLoyaltyCards();
       } else {
         alert("فشل إعادة ضبط البيانات.");
       }
