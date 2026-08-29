@@ -131,6 +131,41 @@ export default function AdminDashboard() {
   const [formTips, setFormTips] = useState("");
   const [formMarinade, setFormMarinade] = useState("");
 
+  // Daily & Custom Reports Filter State
+  const [reportStartDate, setReportStartDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [reportEndDate, setReportEndDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [reportPreset, setReportPreset] = useState<"today" | "yesterday" | "week" | "month" | "all">("today");
+
+  const applyReportPreset = (preset: "today" | "yesterday" | "week" | "month" | "all") => {
+    setReportPreset(preset);
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+
+    if (preset === "today") {
+      setReportStartDate(todayStr);
+      setReportEndDate(todayStr);
+    } else if (preset === "yesterday") {
+      const yest = new Date(now);
+      yest.setDate(yest.getDate() - 1);
+      const yestStr = yest.toISOString().split("T")[0];
+      setReportStartDate(yestStr);
+      setReportEndDate(yestStr);
+    } else if (preset === "week") {
+      const pastWeek = new Date(now);
+      pastWeek.setDate(pastWeek.getDate() - 7);
+      setReportStartDate(pastWeek.toISOString().split("T")[0]);
+      setReportEndDate(todayStr);
+    } else if (preset === "month") {
+      const pastMonth = new Date(now);
+      pastMonth.setDate(pastMonth.getDate() - 30);
+      setReportStartDate(pastMonth.toISOString().split("T")[0]);
+      setReportEndDate(todayStr);
+    } else if (preset === "all") {
+      setReportStartDate("");
+      setReportEndDate("");
+    }
+  };
+
   const fetchStats = async () => {
     try {
       const res = await fetch("/api/stats", { credentials: "same-origin" });
@@ -524,48 +559,288 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Production Actions */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "0.75rem",
-              marginBottom: "1.25rem",
-              flexWrap: "wrap",
-            }}
-          >
-            <a
-              href="/api/export-leads"
-              download
-              className="btn-gold"
-              style={{
-                width: "auto",
-                fontSize: "0.85rem",
-                padding: "0.5rem 1.25rem",
-                animation: "none",
-                textDecoration: "none",
-              }}
-            >
-              📥 تصدير قائمة العملاء إلى ملف Excel
-            </a>
+          {/* 📑 DAILY & CUSTOM REPORTS CENTER */}
+          <div className="card card-gold-border" style={{ marginBottom: "1.5rem", padding: "1.5rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span style={{ fontSize: "1.6rem" }}>📑</span>
+                <div>
+                  <h3 style={{ fontWeight: 800, fontSize: "1.1rem", color: "var(--color-brand-gold)", margin: 0 }}>
+                    مركز استخراج وسحب التقارير اليومية والدورية
+                  </h3>
+                  <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", margin: "0.2rem 0 0 0" }}>
+                    اختر الفترة الزمنية ونوع التقرير لتنزيله فوراً بصيغة Excel أو طباعته كـ PDF
+                  </p>
+                </div>
+              </div>
 
-            <button
-              onClick={() => {
-                if (confirm("⚠️ هل أنت تأكد من رغبتك في إعادة ضبط بيانات المسح والتجربة؟")) {
-                  handleSeed();
-                }
-              }}
-              disabled={seedLoading}
-              className="btn-outline"
-              style={{
-                fontSize: "0.85rem",
-                padding: "0.5rem 1.25rem",
-                borderColor: "rgba(239, 68, 68, 0.4)",
-                color: "#f87171",
-              }}
-            >
-              🔄 {seedLoading ? "جاري الإعادة..." : "تصفير البيانات وإعادة الضبط"}
-            </button>
+              {/* Reset Data Button */}
+              <button
+                onClick={() => {
+                  if (confirm("⚠️ هل أنت متأكد من رغبتك في إعادة ضبط بيانات المسح والتجربة؟")) {
+                    handleSeed();
+                  }
+                }}
+                disabled={seedLoading}
+                className="btn-outline"
+                style={{
+                  fontSize: "0.8rem",
+                  padding: "0.45rem 1rem",
+                  borderColor: "rgba(239, 68, 68, 0.4)",
+                  color: "#f87171",
+                  width: "auto",
+                }}
+              >
+                🔄 {seedLoading ? "جاري الإعادة..." : "تصفير البيانات"}
+              </button>
+            </div>
+
+            {/* Quick Date Range Selector */}
+            <div style={{ background: "rgba(0,0,0,0.3)", borderRadius: "10px", padding: "1rem", marginBottom: "1.25rem", border: "1px solid rgba(223, 138, 39, 0.2)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "white" }}>⏱️ اختيار سريع للفترة:</span>
+                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => applyReportPreset("today")}
+                    style={{
+                      padding: "0.35rem 0.85rem",
+                      fontSize: "0.8rem",
+                      fontWeight: 700,
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-brand-gold)",
+                      background: reportPreset === "today" ? "var(--color-brand-gold)" : "transparent",
+                      color: reportPreset === "today" ? "#000" : "var(--color-brand-gold)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    📅 اليوم
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyReportPreset("yesterday")}
+                    style={{
+                      padding: "0.35rem 0.85rem",
+                      fontSize: "0.8rem",
+                      fontWeight: 700,
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-brand-gold)",
+                      background: reportPreset === "yesterday" ? "var(--color-brand-gold)" : "transparent",
+                      color: reportPreset === "yesterday" ? "#000" : "var(--color-brand-gold)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ⏪ أمس
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyReportPreset("week")}
+                    style={{
+                      padding: "0.35rem 0.85rem",
+                      fontSize: "0.8rem",
+                      fontWeight: 700,
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-brand-gold)",
+                      background: reportPreset === "week" ? "var(--color-brand-gold)" : "transparent",
+                      color: reportPreset === "week" ? "#000" : "var(--color-brand-gold)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    🗓️ آخر 7 أيام
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyReportPreset("month")}
+                    style={{
+                      padding: "0.35rem 0.85rem",
+                      fontSize: "0.8rem",
+                      fontWeight: 700,
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-brand-gold)",
+                      background: reportPreset === "month" ? "var(--color-brand-gold)" : "transparent",
+                      color: reportPreset === "month" ? "#000" : "var(--color-brand-gold)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    🗓️ آخر 30 يوماً
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyReportPreset("all")}
+                    style={{
+                      padding: "0.35rem 0.85rem",
+                      fontSize: "0.8rem",
+                      fontWeight: 700,
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-brand-gold)",
+                      background: reportPreset === "all" ? "var(--color-brand-gold)" : "transparent",
+                      color: reportPreset === "all" ? "#000" : "var(--color-brand-gold)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    📆 كافة الأوقات
+                  </button>
+                </div>
+              </div>
+
+              {/* Custom Date Pickers */}
+              <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>من تاريخ:</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={reportStartDate}
+                    onChange={(e) => {
+                      setReportStartDate(e.target.value);
+                      setReportPreset("today");
+                    }}
+                    style={{ padding: "0.35rem 0.6rem", fontSize: "0.8rem", width: "auto", background: "#111", color: "white" }}
+                  />
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>إلى تاريخ:</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={reportEndDate}
+                    onChange={(e) => {
+                      setReportEndDate(e.target.value);
+                      setReportPreset("today");
+                    }}
+                    style={{ padding: "0.35rem 0.6rem", fontSize: "0.8rem", width: "auto", background: "#111", color: "white" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Export Buttons Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.85rem" }}>
+              {/* Report 1: Executive Summary */}
+              <a
+                href={`/api/export-leads?type=summary${reportStartDate ? `&startDate=${reportStartDate}` : ""}${reportEndDate ? `&endDate=${reportEndDate}` : ""}`}
+                download
+                className="btn-gold"
+                style={{
+                  textAlign: "center",
+                  fontSize: "0.85rem",
+                  padding: "0.75rem 1rem",
+                  textDecoration: "none",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.25rem",
+                  borderRadius: "10px",
+                }}
+              >
+                <span style={{ fontSize: "1.2rem" }}>📋</span>
+                <span style={{ fontWeight: 800 }}>التقرير الإداري الشامل</span>
+                <span style={{ fontSize: "0.7rem", opacity: 0.9 }}>ملخص الزيارات + العملاء + الأصناف</span>
+              </a>
+
+              {/* Report 2: Leads & Promo Codes */}
+              <a
+                href={`/api/export-leads?type=leads${reportStartDate ? `&startDate=${reportStartDate}` : ""}${reportEndDate ? `&endDate=${reportEndDate}` : ""}`}
+                download
+                style={{
+                  background: "#1e293b",
+                  border: "1px solid #3b82f6",
+                  color: "#60a5fa",
+                  textAlign: "center",
+                  fontSize: "0.85rem",
+                  padding: "0.75rem 1rem",
+                  textDecoration: "none",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.25rem",
+                  borderRadius: "10px",
+                  fontWeight: 700,
+                  transition: "background 0.2s",
+                }}
+              >
+                <span style={{ fontSize: "1.2rem" }}>👥</span>
+                <span>تقرير العملاء وكوبونات الخصم</span>
+                <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)" }}>الأسماء وأرقام الهواتف والأكواد</span>
+              </a>
+
+              {/* Report 3: QR Scans Breakdown */}
+              <a
+                href={`/api/export-leads?type=scans${reportStartDate ? `&startDate=${reportStartDate}` : ""}${reportEndDate ? `&endDate=${reportEndDate}` : ""}`}
+                download
+                style={{
+                  background: "#1e293b",
+                  border: "1px solid #10b981",
+                  color: "#34d399",
+                  textAlign: "center",
+                  fontSize: "0.85rem",
+                  padding: "0.75rem 1rem",
+                  textDecoration: "none",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.25rem",
+                  borderRadius: "10px",
+                  fontWeight: 700,
+                  transition: "background 0.2s",
+                }}
+              >
+                <span style={{ fontSize: "1.2rem" }}>📊</span>
+                <span>تقرير مسحات الـ QR والزيارات</span>
+                <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)" }}>تفصيل عدد الزيارات لكل صنف لحم</span>
+              </a>
+
+              {/* Report 4: Loyalty Cards */}
+              <a
+                href={`/api/export-leads?type=loyalty`}
+                download
+                style={{
+                  background: "#1e293b",
+                  border: "1px solid #f59e0b",
+                  color: "#fbbf24",
+                  textAlign: "center",
+                  fontSize: "0.85rem",
+                  padding: "0.75rem 1rem",
+                  textDecoration: "none",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.25rem",
+                  borderRadius: "10px",
+                  fontWeight: 700,
+                  transition: "background 0.2s",
+                }}
+              >
+                <span style={{ fontSize: "1.2rem" }}>🦁</span>
+                <span>تقرير نقاط وبطاقات الولاء</span>
+                <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)" }}>أرصدة نقاط العملاء والمكافآت</span>
+              </a>
+            </div>
+
+            {/* Print / Save PDF Option */}
+            <div style={{ marginTop: "1rem", textAlign: "center" }}>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="btn-outline"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  padding: "0.5rem 1.5rem",
+                  fontSize: "0.85rem",
+                  borderColor: "rgba(223, 138, 39, 0.4)",
+                  color: "var(--color-brand-gold)",
+                  cursor: "pointer",
+                }}
+              >
+                🖨️ طباعة / حفظ صفحة التقرير كـ PDF
+              </button>
+            </div>
           </div>
 
           {/* Performance Table */}
